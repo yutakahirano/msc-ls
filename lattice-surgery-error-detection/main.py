@@ -500,6 +500,7 @@ def main() -> None:
             decoders=['pymatching'],
             max_shots=max_shots,
             max_errors=max_errors,
+            max_batch_size=1_000_000,
         )
         num_wrong = collected_stats[0].errors
         num_discarded = collected_stats[0].discards
