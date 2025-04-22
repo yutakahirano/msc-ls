@@ -129,12 +129,13 @@ class SteanePlusSurfaceCode:
 
         self._perform_lattice_surgery()
 
-        # We perform one-round syndrome measurement at the last of `_perform_lattice_surgery()`, and that's why
-        # we perform `(surface_distance - 1)` rounds syndrome measurment here.
-        for i in range(depth_for_surface_code_syndrome_measurement * (surface_distance - 1)):
-            for m in self.surface_syndrome_measurements.values():
-                m.run()
-            circuit.place_tick()
+        if not self.full_post_selection:
+            # We perform one-round syndrome measurement at the last of `_perform_lattice_surgery()`, and that's why
+            # we perform `(surface_distance - 1)` rounds syndrome measurment here.
+            for i in range(depth_for_surface_code_syndrome_measurement * (surface_distance - 1)):
+                for m in self.surface_syndrome_measurements.values():
+                    m.run()
+                circuit.place_tick()
 
         match self.initial_value:
             case InitialValue.Plus:
@@ -228,7 +229,22 @@ class SteanePlusSurfaceCode:
         m5: MeasurementIdentifier | None = None
         m6: MeasurementIdentifier | None = None
 
+        # We want Steane Z syndrome measurements to touch qubits 1, 3, and 5 after the lattice surgery Z syndrome
+        # measurements touch them.
+        self.steane_z0145.lock_qubit_1()
+        self.steane_z0145.lock_qubit_5()
+        self.steane_z0235.lock_qubit_3()
+        self.steane_z0235.lock_qubit_5()
+
         for i in range(depth_for_surface_code_syndrome_measurement * lattice_surgery_distance):
+            # TODO: Remove these magic numbers.
+            if i == 3:
+                self.steane_z0145.unlock_qubit_1()
+                self.steane_z0145.unlock_qubit_5()
+                self.steane_z0235.unlock_qubit_5()
+            if i == 5:
+                self.steane_z0235.unlock_qubit_3()
+
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             for m in self.lattice_surgery_syndrome_measurements:
@@ -256,14 +272,19 @@ class SteanePlusSurfaceCode:
                 self.steane_z0235.advance()
             if self.steane_z0246.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0246.run():
                 self.steane_z0246.advance()
-
             self.circuit.place_tick()
 
-        # Here we implicitly assume that performing lattice surgery syndrome measurements three times takes longer than
-        # performing Steane syndrome measurements twice.
-        assert self.steane_z0145.num_rounds() == num_steane_syndrome_measurement_rounds
-        assert self.steane_z0235.num_rounds() == num_steane_syndrome_measurement_rounds
-        assert self.steane_z0246.num_rounds() == num_steane_syndrome_measurement_rounds
+        while self.steane_z0145.num_rounds() < num_steane_syndrome_measurement_rounds or \
+                self.steane_z0235.num_rounds() < num_steane_syndrome_measurement_rounds or \
+                self.steane_z0246.num_rounds() < num_steane_syndrome_measurement_rounds:
+            if self.steane_z0145.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0145.run():
+                self.steane_z0145.advance()
+            if self.steane_z0235.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0235.run():
+                self.steane_z0235.advance()
+            if self.steane_z0246.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0246.run():
+                self.steane_z0246.advance()
+
+            self.circuit.place_tick()
 
         if m0 is None:
             m0 = self.circuit.place_measurement_x(STEANE_0)

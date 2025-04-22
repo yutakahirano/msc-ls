@@ -32,7 +32,6 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
-        self.maxDiff = None
 
         expectation = prologue + textwrap.dedent(f'''
         RX 101
@@ -226,6 +225,288 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         DETECTOR rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(0), DetectorIdentifier(1)])
+
+    def test_lock_1(self) -> None:
+        mapping = QubitMapping(20, 20)
+
+        # STEANE_0
+        self.assertEqual(mapping.get_id(3, 3), 111)
+        # STEANE_1
+        self.assertEqual(mapping.get_id(1, 5), 102)
+        # STEANE_4
+        self.assertEqual(mapping.get_id(0, 2), 1)
+        # STEANE_5
+        self.assertEqual(mapping.get_id(3, 5), 112)
+
+        circuit = Circuit(mapping, 0)
+        prologue = str(circuit.circuit)
+        m = SteaneZ0145SyndromeMeasurement(circuit)
+        m.lock_qubit_1()
+
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertFalse(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertFalse(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+
+        b = m.run()
+        self.assertFalse(b)
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertFalse(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertFalse(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertFalse(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertFalse(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertFalse(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertFalse(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        m.unlock_qubit_1()
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+        expectation = prologue + textwrap.dedent(f'''
+        RX 101
+        R 12
+        TICK
+        CX 101 12
+        TICK
+        CX 1 101 112 12
+        TICK
+        CX 111 12
+        TICK
+        TICK
+        CX 102 12''')
+        self.assertEqual(str(circuit.circuit), expectation)
+
+    def test_lock_5(self) -> None:
+        mapping = QubitMapping(20, 20)
+
+        # STEANE_0
+        self.assertEqual(mapping.get_id(3, 3), 111)
+        # STEANE_1
+        self.assertEqual(mapping.get_id(1, 5), 102)
+        # STEANE_4
+        self.assertEqual(mapping.get_id(0, 2), 1)
+        # STEANE_5
+        self.assertEqual(mapping.get_id(3, 5), 112)
+
+        circuit = Circuit(mapping, 0)
+        prologue = str(circuit.circuit)
+        m = SteaneZ0145SyndromeMeasurement(circuit)
+        m.lock_qubit_5()
+
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertFalse(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertFalse(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+
+        b = m.run()
+        self.assertFalse(b)
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_1)
+        self.assertFalse(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertFalse(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertFalse(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        m.unlock_qubit_5()
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_1)
+        self.assertTrue(m.has_performed_cx_4)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+        expectation = prologue + textwrap.dedent(f'''
+        RX 101
+        R 12
+        TICK
+        CX 101 12
+        TICK
+        CX 102 12 1 101
+        TICK
+        CX 111 12
+        TICK
+        TICK
+        CX 112 12''')
+        self.assertEqual(str(circuit.circuit), expectation)
 
 
 class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
@@ -454,6 +735,298 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         DETECTOR rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(0), DetectorIdentifier(1)])
+
+    def test_lock_qubit_3(self) -> None:
+        mapping = QubitMapping(20, 20)
+
+        # STEANE_0
+        self.assertEqual(mapping.get_id(3, 3), 111)
+        # STEANE_2
+        self.assertEqual(mapping.get_id(4, 2), 21)
+        # STEANE_3
+        self.assertEqual(mapping.get_id(5, 5), 122)
+        # STEANE_5
+        self.assertEqual(mapping.get_id(3, 5), 112)
+
+        circuit = Circuit(mapping, 0)
+        prologue = str(circuit.circuit)
+        m = SteaneZ0235SyndromeMeasurement(circuit)
+
+        m.lock_qubit_3()
+
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertFalse(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        m.unlock_qubit_3()
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertTrue(m.has_performed_cx_3)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+        expectation = prologue + textwrap.dedent(f'''
+        RX 121
+        R 22
+        TICK
+        CX 121 22
+        TICK
+        CX 112 22 21 121
+        TICK
+        CX 111 22
+        TICK
+        TICK
+        CX 122 22''')
+        self.assertEqual(str(circuit.circuit), expectation)
+
+    def test_lock_qubit_5(self) -> None:
+        mapping = QubitMapping(20, 20)
+
+        # STEANE_0
+        self.assertEqual(mapping.get_id(3, 3), 111)
+        # STEANE_2
+        self.assertEqual(mapping.get_id(4, 2), 21)
+        # STEANE_3
+        self.assertEqual(mapping.get_id(5, 5), 122)
+        # STEANE_5
+        self.assertEqual(mapping.get_id(3, 5), 112)
+
+        circuit = Circuit(mapping, 0)
+        prologue = str(circuit.circuit)
+        m = SteaneZ0235SyndromeMeasurement(circuit)
+
+        m.lock_qubit_5()
+
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertFalse(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertFalse(m.has_performed_cx_2)
+        self.assertFalse(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertFalse(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertTrue(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertTrue(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertTrue(m.has_performed_cx_3)
+        self.assertFalse(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+
+        m.unlock_qubit_5()
+
+        circuit.place_tick()
+        b = m.run()
+        self.assertFalse(b)
+        self.assertTrue(m.has_initialized_ancillae)
+        self.assertTrue(m.has_entangled_ancillae)
+        self.assertTrue(m.has_performed_cx_0)
+        self.assertTrue(m.has_performed_cx_2)
+        self.assertTrue(m.has_performed_cx_3)
+        self.assertTrue(m.has_performed_cx_5)
+        self.assertFalse(m.has_disentangled_ancillae)
+        self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
+        expectation = prologue + textwrap.dedent(f'''
+        RX 121
+        R 22
+        TICK
+        CX 121 22
+        TICK
+        CX 122 22 21 121
+        TICK
+        CX 111 22
+        TICK
+        TICK
+        CX 112 22''')
+        self.assertEqual(str(circuit.circuit), expectation)
 
 
 class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):

@@ -12,6 +12,8 @@ class SteaneZ0145SyndromeMeasurement:
         self.has_performed_cx_5 = False
         self.has_disentangled_ancillae = False
         self.has_measured_ancillae = False
+        self.is_qubit1_locked = False
+        self.is_qubit5_locked = False
         self._num_rounds = 0
 
     def advance(self) -> None:
@@ -53,6 +55,18 @@ class SteaneZ0145SyndromeMeasurement:
     def is_complete(self) -> bool:
         return self.has_measured_ancillae
 
+    def lock_qubit_1(self) -> None:
+        self.is_qubit1_locked = True
+
+    def unlock_qubit_1(self) -> None:
+        self.is_qubit1_locked = False
+
+    def lock_qubit_5(self) -> None:
+        self.is_qubit5_locked = True
+
+    def unlock_qubit_5(self) -> None:
+        self.is_qubit5_locked = False
+
     # Returns true if the syndrome measurement is complete.
     # This method must not be called when `is_complete()` returns true.
     def run(self) -> bool:
@@ -79,7 +93,7 @@ class SteaneZ0145SyndromeMeasurement:
         while not (self.has_performed_cx_0 and self.has_performed_cx_1 and
                    self.has_performed_cx_4 and self.has_performed_cx_5):
             has_progress = False
-            if not self.has_performed_cx_1:
+            if not self.has_performed_cx_1 and not self.is_qubit1_locked:
                 if self._perform_cx(steane_1, ancilla_b):
                     self.has_performed_cx_1 = True
                     has_progress = True
@@ -87,7 +101,7 @@ class SteaneZ0145SyndromeMeasurement:
                 if self._perform_cx(steane_4, ancilla_a):
                     self.has_performed_cx_4 = True
                     has_progress = True
-            if not self.has_performed_cx_5:
+            if not self.has_performed_cx_5 and not self.is_qubit5_locked:
                 if self._perform_cx(steane_5, ancilla_b):
                     self.has_performed_cx_5 = True
                     has_progress = True
@@ -132,6 +146,8 @@ class SteaneZ0235SyndromeMeasurement:
         self.has_disentangled_ancillae = False
         self.has_measured_ancillae = False
         self._num_rounds = 0
+        self.is_qubit3_locked = False
+        self.is_qubit5_locked = False
 
     def advance(self) -> None:
         assert self.is_complete()
@@ -172,6 +188,18 @@ class SteaneZ0235SyndromeMeasurement:
     def is_complete(self) -> bool:
         return self.has_measured_ancillae
 
+    def lock_qubit_3(self) -> None:
+        self.is_qubit3_locked = True
+
+    def unlock_qubit_3(self) -> None:
+        self.is_qubit3_locked = False
+
+    def lock_qubit_5(self) -> None:
+        self.is_qubit5_locked = True
+
+    def unlock_qubit_5(self) -> None:
+        self.is_qubit5_locked = False
+
     # Returns true if the syndrome measurement is complete.
     # This method must not be called when `is_complete()` returns true.
     def run(self) -> bool:
@@ -198,11 +226,11 @@ class SteaneZ0235SyndromeMeasurement:
         while not (self.has_performed_cx_0 and self.has_performed_cx_2 and
                    self.has_performed_cx_3 and self.has_performed_cx_5):
             has_progress = False
-            if not self.has_performed_cx_5:
+            if not self.has_performed_cx_5 and not self.is_qubit5_locked:
                 if self._perform_cx(steane_5, ancilla_b):
                     self.has_performed_cx_5 = True
                     has_progress = True
-            if not self.has_performed_cx_3:
+            if not self.has_performed_cx_3 and not self.is_qubit3_locked:
                 if self._perform_cx(steane_3, ancilla_b):
                     self.has_performed_cx_3 = True
                     has_progress = True
