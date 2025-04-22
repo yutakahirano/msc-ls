@@ -220,11 +220,35 @@ class SteanePlusSurfaceCode:
         STEANE_5 = (3, 5)
         STEANE_3 = (5, 5)
 
+        m0: MeasurementIdentifier | None = None
+        m1: MeasurementIdentifier | None = None
+        m2: MeasurementIdentifier | None = None
+        m3: MeasurementIdentifier | None = None
+        m4: MeasurementIdentifier | None = None
+        m5: MeasurementIdentifier | None = None
+        m6: MeasurementIdentifier | None = None
+
         for i in range(depth_for_surface_code_syndrome_measurement * lattice_surgery_distance):
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             for m in self.lattice_surgery_syndrome_measurements:
                 m.run()
+
+            if self.steane_z0145.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
+               self.steane_z0235.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
+               self.steane_z0246.num_rounds() >= num_steane_syndrome_measurement_rounds - 1:
+                if m0 is None and self.steane_z0145.has_done_with_qubit_0() and \
+                        self.steane_z0235.has_done_with_qubit_0() and self.steane_z0246.has_done_with_qubit_0():
+                    m0 = self.circuit.place_measurement_x(STEANE_0)
+                if m2 is None and self.steane_z0145.has_done_with_qubit_2() and \
+                        self.steane_z0235.has_done_with_qubit_2() and self.steane_z0246.has_done_with_qubit_2():
+                    m2 = self.circuit.place_measurement_x(STEANE_2)
+                if m4 is None and self.steane_z0145.has_done_with_qubit_4() and \
+                        self.steane_z0235.has_done_with_qubit_4() and self.steane_z0246.has_done_with_qubit_4():
+                    m4 = self.circuit.place_measurement_x(STEANE_4)
+                if m6 is None and self.steane_z0145.has_done_with_qubit_6() and \
+                        self.steane_z0235.has_done_with_qubit_6() and self.steane_z0246.has_done_with_qubit_6():
+                    m6 = self.circuit.place_measurement_x(STEANE_6)
 
             if self.steane_z0145.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0145.run():
                 self.steane_z0145.advance()
@@ -241,14 +265,20 @@ class SteanePlusSurfaceCode:
         assert self.steane_z0235.num_rounds() == num_steane_syndrome_measurement_rounds
         assert self.steane_z0246.num_rounds() == num_steane_syndrome_measurement_rounds
 
-        # TODO: We should perform part of these measurements earlier to reduce the effect of idling noise.
-        m0 = self.circuit.place_measurement_x(STEANE_0)
-        m1 = self.circuit.place_measurement_x(STEANE_1)
-        m2 = self.circuit.place_measurement_x(STEANE_2)
-        m3 = self.circuit.place_measurement_x(STEANE_3)
-        m4 = self.circuit.place_measurement_x(STEANE_4)
-        m5 = self.circuit.place_measurement_x(STEANE_5)
-        m6 = self.circuit.place_measurement_x(STEANE_6)
+        if m0 is None:
+            m0 = self.circuit.place_measurement_x(STEANE_0)
+        if m1 is None:
+            m1 = self.circuit.place_measurement_x(STEANE_1)
+        if m2 is None:
+            m2 = self.circuit.place_measurement_x(STEANE_2)
+        if m3 is None:
+            m3 = self.circuit.place_measurement_x(STEANE_3)
+        if m4 is None:
+            m4 = self.circuit.place_measurement_x(STEANE_4)
+        if m5 is None:
+            m5 = self.circuit.place_measurement_x(STEANE_5)
+        if m6 is None:
+            m6 = self.circuit.place_measurement_x(STEANE_6)
         self.steane_x_measurements = [m0, m1, m2, m3, m4, m5, m6]
 
         circuit.place_detector([m0, m2, m4, m6], post_selection=True)

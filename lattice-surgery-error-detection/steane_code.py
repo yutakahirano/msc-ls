@@ -26,6 +26,27 @@ class SteaneZ0145SyndromeMeasurement:
         self.has_disentangled_ancillae = False
         self.has_measured_ancillae = False
 
+    def has_done_with_qubit_0(self) -> bool:
+        return self.has_performed_cx_0
+
+    def has_done_with_qubit_1(self) -> bool:
+        return self.has_performed_cx_1
+
+    def has_done_with_qubit_2(self) -> bool:
+        return True
+
+    def has_done_with_qubit_3(self) -> bool:
+        return True
+
+    def has_done_with_qubit_4(self) -> bool:
+        return self.has_performed_cx_4
+
+    def has_done_with_qubit_5(self) -> bool:
+        return self.has_performed_cx_5
+
+    def has_done_with_qubit_6(self) -> bool:
+        return True
+
     def num_rounds(self) -> int:
         return self._num_rounds
 
@@ -123,6 +144,27 @@ class SteaneZ0235SyndromeMeasurement:
         self.has_performed_cx_5 = False
         self.has_disentangled_ancillae = False
         self.has_measured_ancillae = False
+
+    def has_done_with_qubit_0(self) -> bool:
+        return self.has_performed_cx_0
+
+    def has_done_with_qubit_1(self) -> bool:
+        return True
+
+    def has_done_with_qubit_2(self) -> bool:
+        return self.has_performed_cx_2
+
+    def has_done_with_qubit_3(self) -> bool:
+        return self.has_performed_cx_3
+
+    def has_done_with_qubit_4(self) -> bool:
+        return True
+
+    def has_done_with_qubit_5(self) -> bool:
+        return self.has_performed_cx_5
+
+    def has_done_with_qubit_6(self) -> bool:
+        return True
 
     def num_rounds(self) -> int:
         return self._num_rounds
@@ -228,6 +270,27 @@ class SteaneZ0246SyndromeMeasurement:
         self.has_disentangled_ancillae_ab = False
         self.has_disentangled_ancillae_ac = False
         self.has_measured_ancillae = False
+
+    def has_done_with_qubit_0(self) -> bool:
+        return self.has_performed_cx_0
+
+    def has_done_with_qubit_1(self) -> bool:
+        return True
+
+    def has_done_with_qubit_2(self) -> bool:
+        return self.has_performed_cx_2
+
+    def has_done_with_qubit_3(self) -> bool:
+        return True
+
+    def has_done_with_qubit_4(self) -> bool:
+        return self.has_performed_cx_4
+
+    def has_done_with_qubit_5(self) -> bool:
+        return True
+
+    def has_done_with_qubit_6(self) -> bool:
+        return self.has_performed_cx_6
 
     def num_rounds(self) -> int:
         return self._num_rounds

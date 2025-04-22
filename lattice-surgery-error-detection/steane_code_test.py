@@ -54,6 +54,13 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertFalse(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertFalse(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 101
         R 12
@@ -72,6 +79,13 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 101
         R 12
@@ -92,6 +106,13 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 101
         R 12
@@ -114,6 +135,13 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 101
         R 12
@@ -138,6 +166,13 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertTrue(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 101
         R 12
@@ -164,6 +199,13 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertTrue(m.has_disentangled_ancillae)
         self.assertTrue(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 101
         R 12
@@ -213,7 +255,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
-
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22''')
@@ -234,6 +282,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertFalse(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22
@@ -252,6 +307,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertFalse(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22
@@ -272,6 +334,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22
@@ -294,6 +363,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertFalse(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22
@@ -318,6 +394,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertTrue(m.has_disentangled_ancillae)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22
@@ -344,6 +427,13 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_performed_cx_5)
         self.assertTrue(m.has_disentangled_ancillae)
         self.assertTrue(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         RX 121
         R 22
@@ -395,7 +485,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_disentangled_ancillae_ab)
         self.assertFalse(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
-
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertFalse(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertFalse(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100''')
@@ -421,6 +517,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_disentangled_ancillae_ab)
         self.assertFalse(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertFalse(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertFalse(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertFalse(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100
@@ -441,6 +544,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_disentangled_ancillae_ab)
         self.assertFalse(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertFalse(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertFalse(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertFalse(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100
@@ -463,6 +573,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_disentangled_ancillae_ab)
         self.assertFalse(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100
@@ -487,6 +604,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_disentangled_ancillae_ab)
         self.assertFalse(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100
@@ -513,6 +637,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_disentangled_ancillae_ab)
         self.assertTrue(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100
@@ -541,6 +672,13 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_disentangled_ancillae_ab)
         self.assertTrue(m.has_disentangled_ancillae_ac)
         self.assertTrue(m.has_measured_ancillae)
+        self.assertTrue(m.has_done_with_qubit_0())
+        self.assertTrue(m.has_done_with_qubit_1())
+        self.assertTrue(m.has_done_with_qubit_2())
+        self.assertTrue(m.has_done_with_qubit_3())
+        self.assertTrue(m.has_done_with_qubit_4())
+        self.assertTrue(m.has_done_with_qubit_5())
+        self.assertTrue(m.has_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
         R 11
         RX 110 100
