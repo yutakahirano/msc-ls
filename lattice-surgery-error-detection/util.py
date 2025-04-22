@@ -86,7 +86,7 @@ class Circuit:
         self.error_probability = error_probability
         self.circuit = stim.Circuit()
         for id, (x, y) in mapping.mapping:
-            self.circuit.append('QUBIT_COORDS', (x, y), id)
+            self.circuit.append('QUBIT_COORDS', id, (x, y))
         self.tainted_qubits: list[int] = []
         self.num_z0246_syndrome_measurements = 0
         self.num_z0235_syndrome_measurements = 0
