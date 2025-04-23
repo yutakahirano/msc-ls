@@ -258,17 +258,17 @@ class SteanePlusSurfaceCode:
                z0246.num_rounds() >= num_steane_syndrome_measurement_rounds - 1:
                 num_steane_rounds = num_steane_syndrome_measurement_rounds
 
-                if m0 is None and z0145.has_done_with_qubit_0() and \
-                        z0235.has_done_with_qubit_0() and z0246.has_done_with_qubit_0():
+                if m0 is None and z0145.is_done_with_qubit_0() and \
+                        z0235.is_done_with_qubit_0() and z0246.is_done_with_qubit_0():
                     m0 = self.circuit.place_measurement_x(STEANE_0)
-                if m2 is None and z0145.has_done_with_qubit_2() and \
-                        z0235.has_done_with_qubit_2() and z0246.has_done_with_qubit_2():
+                if m2 is None and z0145.is_done_with_qubit_2() and \
+                        z0235.is_done_with_qubit_2() and z0246.is_done_with_qubit_2():
                     m2 = self.circuit.place_measurement_x(STEANE_2)
-                if m4 is None and z0145.has_done_with_qubit_4() and \
-                        z0235.has_done_with_qubit_4() and z0246.has_done_with_qubit_4():
+                if m4 is None and z0145.is_done_with_qubit_4() and \
+                        z0235.is_done_with_qubit_4() and z0246.is_done_with_qubit_4():
                     m4 = self.circuit.place_measurement_x(STEANE_4)
-                if m6 is None and z0145.has_done_with_qubit_6() and \
-                        z0235.has_done_with_qubit_6() and z0246.has_done_with_qubit_6():
+                if m6 is None and z0145.is_done_with_qubit_6() and \
+                        z0235.is_done_with_qubit_6() and z0246.is_done_with_qubit_6():
                     m6 = self.circuit.place_measurement_x(STEANE_6)
 
             # TODO: Remove these magic numbers.
