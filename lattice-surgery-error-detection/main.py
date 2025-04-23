@@ -199,6 +199,9 @@ class SteanePlusSurfaceCode:
         surface_distance = self.surface_distance
         surface_code_offset_x = self.surface_code_offset_x
         surface_code_offset_y = self.surface_code_offset_y
+        z0145 = self.steane_z0145
+        z0235 = self.steane_z0235
+        z0246 = self.steane_z0246
 
         for i in range(surface_distance):
             for j in range(surface_distance):
@@ -231,60 +234,64 @@ class SteanePlusSurfaceCode:
 
         # We want Steane Z syndrome measurements to touch qubits 1, 3, and 5 after the lattice surgery Z syndrome
         # measurements touch them.
-        self.steane_z0145.lock_qubit_1()
-        self.steane_z0145.lock_qubit_5()
-        self.steane_z0235.lock_qubit_3()
-        self.steane_z0235.lock_qubit_5()
+        z0145.lock_qubit_1()
+        z0145.lock_qubit_5()
+        z0235.lock_qubit_3()
+        z0235.lock_qubit_5()
 
         for i in range(depth_for_surface_code_syndrome_measurement * lattice_surgery_distance):
             # TODO: Remove these magic numbers.
             if i == 3:
-                self.steane_z0145.unlock_qubit_1()
-                self.steane_z0145.unlock_qubit_5()
-                self.steane_z0235.unlock_qubit_5()
+                z0145.unlock_qubit_1()
+                z0145.unlock_qubit_5()
+                z0235.unlock_qubit_5()
             if i == 5:
-                self.steane_z0235.unlock_qubit_3()
+                z0235.unlock_qubit_3()
 
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             for m in self.lattice_surgery_syndrome_measurements:
                 m.run()
 
-            if self.steane_z0145.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
-               self.steane_z0235.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
-               self.steane_z0246.num_rounds() >= num_steane_syndrome_measurement_rounds - 1:
-                if m0 is None and self.steane_z0145.has_done_with_qubit_0() and \
-                        self.steane_z0235.has_done_with_qubit_0() and self.steane_z0246.has_done_with_qubit_0():
+            if z0145.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
+               z0235.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
+               z0246.num_rounds() >= num_steane_syndrome_measurement_rounds - 1:
+                num_steane_rounds = num_steane_syndrome_measurement_rounds
+
+                if m0 is None and z0145.has_done_with_qubit_0() and \
+                        z0235.has_done_with_qubit_0() and z0246.has_done_with_qubit_0():
                     m0 = self.circuit.place_measurement_x(STEANE_0)
-                if m2 is None and self.steane_z0145.has_done_with_qubit_2() and \
-                        self.steane_z0235.has_done_with_qubit_2() and self.steane_z0246.has_done_with_qubit_2():
+                if m2 is None and z0145.has_done_with_qubit_2() and \
+                        z0235.has_done_with_qubit_2() and z0246.has_done_with_qubit_2():
                     m2 = self.circuit.place_measurement_x(STEANE_2)
-                if m4 is None and self.steane_z0145.has_done_with_qubit_4() and \
-                        self.steane_z0235.has_done_with_qubit_4() and self.steane_z0246.has_done_with_qubit_4():
+                if m4 is None and z0145.has_done_with_qubit_4() and \
+                        z0235.has_done_with_qubit_4() and z0246.has_done_with_qubit_4():
                     m4 = self.circuit.place_measurement_x(STEANE_4)
-                if m6 is None and self.steane_z0145.has_done_with_qubit_6() and \
-                        self.steane_z0235.has_done_with_qubit_6() and self.steane_z0246.has_done_with_qubit_6():
+                if m6 is None and z0145.has_done_with_qubit_6() and \
+                        z0235.has_done_with_qubit_6() and z0246.has_done_with_qubit_6():
                     m6 = self.circuit.place_measurement_x(STEANE_6)
 
-            if self.steane_z0145.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0145.run():
-                self.steane_z0145.advance()
-            if self.steane_z0235.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0235.run():
-                self.steane_z0235.advance()
-            if self.steane_z0246.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0246.run():
-                self.steane_z0246.advance()
+            # TODO: Remove these magic numbers.
+            if i == 16:
+                m1 = self.circuit.place_measurement_x(STEANE_1)
+            if i == 16:
+                m3 = self.circuit.place_measurement_x(STEANE_3)
+            if i == 14:
+                m5 = self.circuit.place_measurement_x(STEANE_5)
+
+            if z0145.num_rounds() < num_steane_syndrome_measurement_rounds and z0145.run():
+                z0145.advance()
+            if z0235.num_rounds() < num_steane_syndrome_measurement_rounds and z0235.run():
+                z0235.advance()
+            if z0246.num_rounds() < num_steane_syndrome_measurement_rounds and z0246.run():
+                z0246.advance()
             self.circuit.place_tick()
 
-        while self.steane_z0145.num_rounds() < num_steane_syndrome_measurement_rounds or \
-                self.steane_z0235.num_rounds() < num_steane_syndrome_measurement_rounds or \
-                self.steane_z0246.num_rounds() < num_steane_syndrome_measurement_rounds:
-            if self.steane_z0145.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0145.run():
-                self.steane_z0145.advance()
-            if self.steane_z0235.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0235.run():
-                self.steane_z0235.advance()
-            if self.steane_z0246.num_rounds() < num_steane_syndrome_measurement_rounds and self.steane_z0246.run():
-                self.steane_z0246.advance()
-
-            self.circuit.place_tick()
+        # Here we implicitly assume that performing lattice surgery syndrome measurements three times takes longer than
+        # performing Steane syndrome measurements twice.
+        assert z0145.num_rounds() == num_steane_syndrome_measurement_rounds
+        assert z0235.num_rounds() == num_steane_syndrome_measurement_rounds
+        assert z0246.num_rounds() == num_steane_syndrome_measurement_rounds
 
         if m0 is None:
             m0 = self.circuit.place_measurement_x(STEANE_0)
