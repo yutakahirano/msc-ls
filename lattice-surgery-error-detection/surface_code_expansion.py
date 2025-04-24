@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import math
 import numpy as np
 import pymatching
 import stim
@@ -170,44 +171,44 @@ class SurfaceCodePatch:
             self.detector_for_complementary_gap = DetectorIdentifier(stim_circuit.num_detectors - 1)
             stim_circuit.append('TICK')
 
-        measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
-        last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
-            pos: m.last_measurement for (pos, m) in self.syndrome_measurements.items()
-        }
-        for i in range(distance2):
-            for j in range(distance2):
-                x = offset_x + j * 2
-                y = offset_y + i * 2
-                measurements[(x, y)] = circuit.place_measurement_z((x, y))
+            measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
+            last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
+                pos: m.last_measurement for (pos, m) in self.syndrome_measurements.items()
+            }
+            for i in range(distance2):
+                for j in range(distance2):
+                    x = offset_x + j * 2
+                    y = offset_y + i * 2
+                    measurements[(x, y)] = circuit.place_measurement_z((x, y))
 
-        for i in range(distance2):
-            for j in range(distance2):
-                x = offset_x + j * 2
-                y = offset_y + i * 2
+            for i in range(distance2):
+                for j in range(distance2):
+                    x = offset_x + j * 2
+                    y = offset_y + i * 2
 
-                # Weight-two syndrome measurements:
-                if j == 0 and i % 2 == 1 and i < distance2 - 1:
-                    last = last_measurements[(x - 1, y + 1)]
-                    assert last is not None
-                    circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last])
-                if j == distance2 - 1 and i % 2 == 0 and i < distance2 - 1:
-                    last = last_measurements[(x + 1, y + 1)]
-                    assert last is not None
-                    circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last])
+                    # Weight-two syndrome measurements:
+                    if j == 0 and i % 2 == 1 and i < distance2 - 1:
+                        last = last_measurements[(x - 1, y + 1)]
+                        assert last is not None
+                        circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last])
+                    if j == distance2 - 1 and i % 2 == 0 and i < distance2 - 1:
+                        last = last_measurements[(x + 1, y + 1)]
+                        assert last is not None
+                        circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last])
 
-                # Weight-four syndrome measurements:
-                if i < distance2 - 1 and j < distance2 - 1 and (i + j) % 2 == 0:
-                    last = last_measurements[(x + 1, y + 1)]
-                    assert last is not None
-                    circuit.place_detector([
-                        measurements[(x, y)],
-                        measurements[(x + 2, y)],
-                        measurements[(x, y + 2)],
-                        measurements[(x + 2, y + 2)],
-                        last
-                    ])
-        zs = [measurements[(offset_x + j * 2, offset_y)] for j in range(distance2)]
-        circuit.place_observable_include(zs, ObservableIdentifier(0))
+                    # Weight-four syndrome measurements:
+                    if i < distance2 - 1 and j < distance2 - 1 and (i + j) % 2 == 0:
+                        last = last_measurements[(x + 1, y + 1)]
+                        assert last is not None
+                        circuit.place_detector([
+                            measurements[(x, y)],
+                            measurements[(x + 2, y)],
+                            measurements[(x, y + 2)],
+                            measurements[(x + 2, y + 2)],
+                            last
+                        ])
+            zs = [measurements[(offset_x + j * 2, offset_y)] for j in range(distance2)]
+            circuit.place_observable_include(zs, ObservableIdentifier(0))
 
     def _push(self, m: SurfaceSyndromeMeasurement) -> None:
         position = m.ancilla_position
@@ -227,7 +228,7 @@ class SimulationResult:
         self.expected = expected
 
     def gap(self) -> float:
-        return self.complementary_weight - self.weight
+        return abs(self.complementary_weight - self.weight)
 
 
 class SimulationResults:
@@ -235,35 +236,42 @@ class SimulationResults:
         self.cutoff_gap = cutoff_gap
         self.num_valid_samples_with_large_gap: int = 0
         self.num_wrong_samples_with_large_gap: int = 0
+        self.num_discarded_samples: int = 0
         self.samples_with_small_gap: list[SimulationResult] = []
 
     def append(self, weight: float, complementary_weight: float, expected: bool) -> None:
-        gap = complementary_weight - weight
-        if gap > self.cutoff_gap:
+        r = SimulationResult(weight, complementary_weight, expected)
+        if r.gap() > self.cutoff_gap:
             if expected:
                 self.num_valid_samples_with_large_gap += 1
             else:
                 self.num_wrong_samples_with_large_gap += 1
             return
-        self.samples_with_small_gap.append(SimulationResult(weight, complementary_weight, expected))
+        self.samples_with_small_gap.append(r)
+
+    def append_discarded(self) -> None:
+        self.num_discarded_samples += 1
 
     def extend(self, other: SimulationResults):
         assert self.cutoff_gap == other.cutoff_gap
 
         self.num_valid_samples_with_large_gap += other.num_valid_samples_with_large_gap
         self.num_wrong_samples_with_large_gap += other.num_wrong_samples_with_large_gap
+        self.num_discarded_samples += other.num_discarded_samples
         self.samples_with_small_gap.extend(other.samples_with_small_gap)
 
     def __len__(self):
         return self.num_valid_samples_with_large_gap + \
-                self.num_wrong_samples_with_large_gap + len(self.samples_with_small_gap)
+                self.num_wrong_samples_with_large_gap + \
+                self.num_discarded_samples + len(self.samples_with_small_gap)
 
 
 def perform_simulation(
         stim_circuit: stim.Circuit,
         num_shots: int,
-        detector_for_complementary_gap: int,
-        cutoff_gap: float) -> SimulationResults:
+        detector_for_complementary_gap: DetectorIdentifier,
+        cutoff_gap: float,
+        detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
 
     dem = stim_circuit.detector_error_model(decompose_errors=True)
     matcher = pymatching.Matching.from_detector_error_model(dem)
@@ -275,11 +283,23 @@ def perform_simulation(
 
     for shot in range(num_shots):
         syndrome = detection_events[shot]
+        discard = False
+        for id in detectors_for_post_selection:
+            if syndrome[id.id] != 0:
+                discard = True
+                break
+        if discard:
+            results.append_discarded()
+            continue
+
         prediction, weight = matcher.decode(syndrome, return_weight=True)
 
-        syndrome[detector_for_complementary_gap] = not syndrome[detector_for_complementary_gap]
-        _, complementary_weight = matcher.decode(syndrome, return_weight=True)
-        syndrome[detector_for_complementary_gap] = not syndrome[detector_for_complementary_gap]
+        syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
+        c_prediction, complementary_weight = matcher.decode(syndrome, return_weight=True)
+        syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
+
+        if weight > complementary_weight:
+            prediction = c_prediction
 
         actual = observable_flips[shot]
         expected = np.array_equal(actual, prediction)
@@ -296,7 +316,12 @@ def perform_parallel_simulation(
         num_shots_per_task: int,
         show_progress: bool) -> SimulationResults:
     if num_shots / parallelism < 1000 or parallelism == 1:
-        return perform_simulation(circuit.circuit, num_shots, detector_for_complementary_gap.id, cutoff_gap)
+        return perform_simulation(
+                circuit.circuit,
+                num_shots,
+                detector_for_complementary_gap,
+                cutoff_gap,
+                circuit.detectors_for_post_selection)
 
     results = SimulationResults(cutoff_gap)
     progress = 0
@@ -311,8 +336,9 @@ def perform_parallel_simulation(
             future = executor.submit(perform_simulation,
                                      circuit.circuit,
                                      num_shots_for_this_task,
-                                     detector_for_complementary_gap.id,
-                                     cutoff_gap)
+                                     detector_for_complementary_gap,
+                                     cutoff_gap,
+                                     circuit.detectors_for_post_selection)
             futures.append(future)
         try:
             while len(futures) > 0:
@@ -403,24 +429,26 @@ def main() -> None:
     ))
     results.samples_with_small_gap.sort(key=lambda r: r.gap())
 
-    discard_rates = [0, 0.001, 0.01, 0.02, 0.05, 0.1]
+    discard_rates = [0, 0.001, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
     for rate in discard_rates:
-        num_discarded = min(int(rate * len(results)), len(results.samples_with_small_gap))
-        max_gap: float | None = None
+        num_discarded = max(
+            min(int(rate * len(results)), len(results.samples_with_small_gap)), results.num_discarded_samples)
+        max_gap = -math.inf
 
         num_valid = results.num_valid_samples_with_large_gap
         num_wrong = results.num_wrong_samples_with_large_gap
 
-        if num_discarded > 0:
-            max_gap = results.samples_with_small_gap[num_discarded - 1].gap()
-        for r in results.samples_with_small_gap[num_discarded:]:
+        num_discarded_by_complementary_gap = num_discarded - results.num_discarded_samples
+        if num_discarded_by_complementary_gap:
+            max_gap = results.samples_with_small_gap[num_discarded_by_complementary_gap - 1].gap()
+        for r in results.samples_with_small_gap[num_discarded_by_complementary_gap:]:
             if r.expected:
                 num_valid += 1
             else:
                 num_wrong += 1
         print('Discard {:.1f}% samples, VALID = {}, WRONG = {}, DISCARDED = {}'.format(
             rate * 100, num_valid, num_wrong, num_discarded))
-        print('max gap = {}'.format('N/A' if max_gap is None else str(max_gap)))
+        print('max gap = {}'.format(max_gap))
         print('WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
         print()
 
