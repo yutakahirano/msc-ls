@@ -198,3 +198,31 @@ class Circuit:
         '''Adds measurement records to a specified logical observable.'''
         targets = [m.target_rec(self) for m in measurements]
         self.circuit.append('OBSERVABLE_INCLUDE', targets, id.id)
+
+
+class SuppressNoise:
+    '''\
+    Context manager to temporarily suppress noise for a Circuit.
+
+    When used with a `with` statement, this class sets the circuit's error
+    probability to zero for the duration of the block, and restores it
+    afterward.
+
+    Example:
+        with SuppressNoise(circuit):
+            circuit.place_reset_x(q)
+            ...
+    '''
+    def __init__(self, circuit: Circuit):
+        self.circuit = circuit
+        self.error_probability: float | None = None
+
+    def __enter__(self):
+        assert self.error_probability is None
+        self.error_probability = self.circuit.error_probability
+        self.circuit.error_probability = 0
+
+    def __exit__(self, ex_type, ex_value, trace):
+        assert self.error_probability is not None
+        self.circuit.error_probability = self.error_probability
+        self.error_probability = None
