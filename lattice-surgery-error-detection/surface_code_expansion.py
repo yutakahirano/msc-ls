@@ -348,6 +348,7 @@ def main() -> None:
     parser.add_argument('--rounds-for-gap', type=int, default=7)
     parser.add_argument('--cutoff-gap', type=float, default=100.0)
     parser.add_argument('--show-progress', action='store_true')
+    parser.add_argument('--print-circuit', action='store_true')
 
     args = parser.parse_args()
 
@@ -360,6 +361,7 @@ def main() -> None:
     print('  rounds-for-gap = {}'.format(args.rounds_for_gap))
     print('  cutoff-gap = {}'.format(args.cutoff_gap))
     print('  show-progress = {}'.format(args.show_progress))
+    print('  print-circuit = {}'.format(args.print_circuit))
 
     num_shots: int = args.num_shots
     error_probability: float = args.error_probability
@@ -370,6 +372,7 @@ def main() -> None:
     rounds_for_gap: int = args.rounds_for_gap
     cutoff_gap: float = args.cutoff_gap
     show_progress: bool = args.show_progress
+    print_circuit: bool = args.print_circuit
 
     mapping = QubitMapping(30, 30)
     circuit = Circuit(mapping, error_probability)
@@ -379,6 +382,12 @@ def main() -> None:
 
     detector_for_complementary_gap = patch.detector_for_complementary_gap
     assert detector_for_complementary_gap is not None
+
+    if print_circuit:
+        print(circuit.circuit)
+
+    if num_shots == 0:
+        return
 
     results = perform_parallel_simulation(
         circuit,
