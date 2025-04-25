@@ -23,7 +23,7 @@ TWO_WEIGHT_RIGHT = SurfaceStabilizerPattern.TWO_WEIGHT_RIGHT
 
 class SurfaceCodePatch:
     def __init__(self, circuit: Circuit, distance1: int, distance2: int, rounds_for_gap: int) -> None:
-        # assert distance1 < distance2
+        assert distance1 <= distance2
         self.circuit = circuit
         self.distance1 = distance1
         self.distance2 = distance2
@@ -94,6 +94,9 @@ class SurfaceCodePatch:
         (offset_x, offset_y) = self.offset
         syndrome_measurements = self.syndrome_measurements
 
+        if distance1 == distance2:
+            return
+
         for i in range(distance2):
             for j in range(distance2):
                 m: SurfaceSyndromeMeasurement
@@ -129,29 +132,30 @@ class SurfaceCodePatch:
                     satisfied = i < j
                     if (x + 1, y + 1) in syndrome_measurements:
                         assert j == distance1 - 1
+                        assert satisfied
                         m = syndrome_measurements[(x + 1), (y + 1)]
-                        assert m.pattern == TWO_WEIGHT_LEFT
                         del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceZSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_LEFT
                         last_measurement = m.last_measurement
                     m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
                     m.last_measurement = last_measurement
                     self._push(m)
                 else:
-                    satisfied = j + 1 < i
+                    satisfied = j < i
                     if (x + 1, y + 1) in syndrome_measurements:
                         assert i == distance1 - 1
+                        assert satisfied
                         m = syndrome_measurements[(x + 1), (y + 1)]
-                        assert m.pattern == TWO_WEIGHT_UP
                         del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceXSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_UP
                         last_measurement = m.last_measurement
                     m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                    m.last_measurement = last_measurement
                     self._push(m)
 
         assert len(syndrome_measurements) == distance2 * distance2 - 1
-        for _ in range(TICKS_FOR_SYNDROME_MEASUREMENT * self.rounds_for_gap):
-            for m in syndrome_measurements.values():
-                m.run()
-            circuit.place_tick()
 
     def _perform_destructive_z_measurement(self) -> None:
         distance2 = self.distance2
@@ -218,6 +222,11 @@ class SurfaceCodePatch:
     def build(self) -> None:
         self._setup_initial_state()
         self._perform_code_expansion()
+        for _ in range(TICKS_FOR_SYNDROME_MEASUREMENT * self.rounds_for_gap):
+            for m in self.syndrome_measurements.values():
+                m.run()
+            self.circuit.place_tick()
+
         self._perform_destructive_z_measurement()
 
 
@@ -429,7 +438,7 @@ def main() -> None:
     ))
     results.samples_with_small_gap.sort(key=lambda r: r.gap())
 
-    discard_rates = [0, 0.001, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
+    discard_rates = [0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
     for rate in discard_rates:
         num_discarded = max(
             min(int(rate * len(results)), len(results.samples_with_small_gap)), results.num_discarded_samples)
