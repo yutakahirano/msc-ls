@@ -187,12 +187,15 @@ class Circuit:
         self.tainted_qubits.append(target)
         return MeasurementIdentifier(self.circuit.num_measurements - 1)
 
-    def place_detector(self, measurements: list[MeasurementIdentifier], post_selection: bool = False) -> None:
+    def place_detector(
+            self, measurements: list[MeasurementIdentifier], post_selection: bool = False) -> DetectorIdentifier:
         '''Places a detector with the given measurements.'''
         circuit = self.circuit
         self.circuit.append('DETECTOR', [i.target_rec(self) for i in measurements])
+        id = DetectorIdentifier(self.circuit.num_detectors - 1)
         if post_selection:
-            self.detectors_for_post_selection.append(DetectorIdentifier(self.circuit.num_detectors - 1))
+            self.detectors_for_post_selection.append(id)
+        return id
 
     def place_observable_include(self, measurements: list[MeasurementIdentifier], id: ObservableIdentifier) -> None:
         '''Adds measurement records to a specified logical observable.'''
