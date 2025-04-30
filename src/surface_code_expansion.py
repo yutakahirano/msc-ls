@@ -381,8 +381,9 @@ def find_gap_threshold(results: SimulationResults, rate: float) -> float:
     if rate * total <= num_discarded:
         return 0.0
 
-    index = min(int(round(rate * total)), len(results.uncategorized_samples) - 1)
-    return results.uncategorized_samples[index].gap
+    index = min(len(results.uncategorized_samples) - 1, int(round(rate * total)) - num_discarded)
+    gap = results.uncategorized_samples[index].gap
+    return gap
 
 
 def construct_gap_filters(
@@ -398,8 +399,10 @@ def construct_gap_filters(
         lower_rate = rate - uncategorized_samples_rate / 2
         upper_rate = rate + uncategorized_samples_rate / 2
 
-        filter = (find_gap_threshold(results, lower_rate), find_gap_threshold(results, upper_rate))
-        gap_filters.append(filter)
+        # Complementary gap distribution can have spikes, and these multiplications are protections for them.
+        lower_threshold = find_gap_threshold(results, lower_rate) * 0.999
+        upper_threshold = find_gap_threshold(results, upper_rate) * 1.001
+        gap_filters.append((lower_threshold, upper_threshold))
     return gap_filters
 
 
