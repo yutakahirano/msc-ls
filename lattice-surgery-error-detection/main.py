@@ -509,6 +509,7 @@ def main() -> None:
     parser.add_argument('--surface-distance', type=int, default=3)
     parser.add_argument('--initial-value', choices=['+', '0'], default='+')
     parser.add_argument('--full-post-selection', action='store_true')
+    parser.add_argument('--print-circuit', action='store_true')
 
     args = parser.parse_args()
 
@@ -519,6 +520,7 @@ def main() -> None:
     print('  surface-distance = {}'.format(args.surface_distance))
     print('  initial-value = {}'.format(args.initial_value))
     print('  full-post-selection = {}'.format(args.full_post_selection))
+    print('  print-circuit = {}'.format(args.print_circuit))
 
     max_shots: int = args.max_shots
     max_errors: int = args.max_errors
@@ -533,6 +535,7 @@ def main() -> None:
         case _:
             assert False
     full_post_selection: bool = args.full_post_selection
+    print_circuit: bool = args.print_circuit
 
     mapping = QubitMapping(30, 30)
     r = SteanePlusSurfaceCode(mapping, surface_distance, initial_value, error_probability, full_post_selection)
@@ -540,7 +543,8 @@ def main() -> None:
     stim_circuit = circuit.circuit
     r.run()
     # r.run_surface_only()
-    # print(stim_circuit)
+    if print_circuit:
+        print(stim_circuit)
 
     use_sinter = True
     if use_sinter:
