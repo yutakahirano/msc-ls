@@ -484,7 +484,6 @@ def main() -> None:
     for results in list_of_results:
         results.uncategorized_samples.sort(key=lambda r: r.gap)
 
-    discard_rates = [0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
     for (rate, results) in zip(discard_rates, list_of_results):
         num_valid = results.num_valid_samples
         num_wrong = results.num_wrong_samples
