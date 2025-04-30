@@ -230,57 +230,56 @@ class SurfaceCodePatch:
         self._perform_destructive_z_measurement()
 
 
-class SimulationResult:
-    def __init__(self, weight: float, complementary_weight: float, expected: bool) -> None:
-        self.weight = weight
-        self.complementary_weight = complementary_weight
+class UncategorizedSample:
+    def __init__(self, gap: float, expected: bool) -> None:
+        self.gap = gap
         self.expected = expected
-
-    def gap(self) -> float:
-        return abs(self.complementary_weight - self.weight)
 
 
 class SimulationResults:
-    def __init__(self, cutoff_gap: float):
-        self.cutoff_gap = cutoff_gap
-        self.num_valid_samples_with_large_gap: int = 0
-        self.num_wrong_samples_with_large_gap: int = 0
+    def __init__(self, lower_threshold: float, upper_threshold: float) -> None:
+        self.lower_threshold = lower_threshold
+        self.upper_threshold = upper_threshold
+        self.num_valid_samples: int = 0
+        self.num_wrong_samples: int = 0
         self.num_discarded_samples: int = 0
-        self.samples_with_small_gap: list[SimulationResult] = []
+        self.uncategorized_samples: list[UncategorizedSample] = []
 
-    def append(self, weight: float, complementary_weight: float, expected: bool) -> None:
-        r = SimulationResult(weight, complementary_weight, expected)
-        if r.gap() > self.cutoff_gap:
+    def append(self, gap: float, expected: bool) -> None:
+        if gap < self.lower_threshold:
+            self.num_discarded_samples += 1
+        elif gap >= self.upper_threshold:
             if expected:
-                self.num_valid_samples_with_large_gap += 1
+                self.num_valid_samples += 1
             else:
-                self.num_wrong_samples_with_large_gap += 1
-            return
-        self.samples_with_small_gap.append(r)
+                self.num_wrong_samples += 1
+        else:
+            self.uncategorized_samples.append(UncategorizedSample(gap, expected))
 
     def append_discarded(self) -> None:
         self.num_discarded_samples += 1
 
     def extend(self, other: SimulationResults):
-        assert self.cutoff_gap == other.cutoff_gap
+        assert self.lower_threshold == other.lower_threshold
+        assert self.upper_threshold == other.upper_threshold
 
-        self.num_valid_samples_with_large_gap += other.num_valid_samples_with_large_gap
-        self.num_wrong_samples_with_large_gap += other.num_wrong_samples_with_large_gap
+        self.num_valid_samples += other.num_valid_samples
+        self.num_wrong_samples += other.num_wrong_samples
         self.num_discarded_samples += other.num_discarded_samples
-        self.samples_with_small_gap.extend(other.samples_with_small_gap)
+        self.uncategorized_samples.extend(other.uncategorized_samples)
 
     def __len__(self):
-        return self.num_valid_samples_with_large_gap + \
-                self.num_wrong_samples_with_large_gap + \
-                self.num_discarded_samples + len(self.samples_with_small_gap)
+        return self.num_valid_samples + \
+                self.num_wrong_samples + \
+                self.num_discarded_samples + len(self.uncategorized_samples)
 
 
 def perform_simulation(
         stim_circuit: stim.Circuit,
         num_shots: int,
         detector_for_complementary_gap: DetectorIdentifier,
-        cutoff_gap: float,
-        detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
+        gap_filters: list[tuple[float, float]],
+        detectors_for_post_selection: list[DetectorIdentifier]) -> list[SimulationResults]:
 
     dem = stim_circuit.detector_error_model(decompose_errors=True)
     matcher = pymatching.Matching.from_detector_error_model(dem)
@@ -288,51 +287,50 @@ def perform_simulation(
 
     detection_events, observable_flips = sampler.sample(num_shots, separate_observables=True)
 
-    results = SimulationResults(cutoff_gap)
+    results = [SimulationResults(lower, upper) for (lower, upper) in gap_filters]
+    postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
 
     for shot in range(num_shots):
         syndrome = detection_events[shot]
-        discard = False
-        for id in detectors_for_post_selection:
-            if syndrome[id.id] != 0:
-                discard = True
-                break
-        if discard:
-            results.append_discarded()
+        if np.any(syndrome[postselection_ids] != 0):
+            for rs in results:
+                rs.append_discarded()
             continue
 
         prediction, weight = matcher.decode(syndrome, return_weight=True)
 
         syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
-        c_prediction, complementary_weight = matcher.decode(syndrome, return_weight=True)
+        c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
         syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
 
-        if weight > complementary_weight:
+        if weight > c_weight:
             prediction = c_prediction
 
         actual = observable_flips[shot]
         expected = np.array_equal(actual, prediction)
-        results.append(weight, complementary_weight, expected)
+        gap = abs(weight - c_weight)
+        for rs in results:
+            rs.append(gap, expected)
     return results
 
 
 def perform_parallel_simulation(
         circuit: Circuit,
         detector_for_complementary_gap: DetectorIdentifier,
-        cutoff_gap: float,
+        gap_filters: list[tuple[float, float]],
         num_shots: int,
         parallelism: int,
         num_shots_per_task: int,
-        show_progress: bool) -> SimulationResults:
+        show_progress: bool) -> list[SimulationResults]:
     if num_shots / parallelism < 1000 or parallelism == 1:
         return perform_simulation(
                 circuit.circuit,
                 num_shots,
                 detector_for_complementary_gap,
-                cutoff_gap,
+                gap_filters,
                 circuit.detectors_for_post_selection)
 
-    results = SimulationResults(cutoff_gap)
+    results = [SimulationResults(lower, upper) for (lower, upper) in gap_filters]
     progress = 0
     with ProcessPoolExecutor(max_workers=parallelism) as executor:
         futures: list[concurrent.futures.Future] = []
@@ -346,7 +344,7 @@ def perform_parallel_simulation(
                                      circuit.circuit,
                                      num_shots_for_this_task,
                                      detector_for_complementary_gap,
-                                     cutoff_gap,
+                                     gap_filters,
                                      circuit.detectors_for_post_selection)
             futures.append(future)
         try:
@@ -359,8 +357,11 @@ def perform_parallel_simulation(
                 new_futures = []
                 for future in futures:
                     if future.done():
-                        results.extend(future.result())
-                        progress += len(future.result())
+                        assert len(results) == len(future.result())
+                        assert len(results) > 0
+                        for i in range(len(results)):
+                            results[i].extend(future.result()[i])
+                        progress += len(future.result()[0])
                     else:
                         new_futures.append(future)
                 futures = new_futures
@@ -372,6 +373,36 @@ def perform_parallel_simulation(
     return results
 
 
+def find_gap_threshold(results: SimulationResults, rate: float) -> float:
+    assert results.lower_threshold == 0
+    assert results.upper_threshold == math.inf
+    num_discarded = results.num_discarded_samples
+    total = len(results)
+    if rate * total <= num_discarded:
+        return 0.0
+
+    index = min(int(round(rate * total)), len(results.uncategorized_samples) - 1)
+    return results.uncategorized_samples[index].gap
+
+
+def construct_gap_filters(
+        discard_rates: list[float],
+        results: SimulationResults,
+        uncategorized_samples_rate: float) -> list[tuple[float, float]]:
+    assert results.lower_threshold == 0
+    assert results.upper_threshold == math.inf
+    gap_filters: list[tuple[float, float]] = []
+    num_samples = len(results)
+
+    for rate in discard_rates:
+        lower_rate = rate - uncategorized_samples_rate / 2
+        upper_rate = rate + uncategorized_samples_rate / 2
+
+        filter = (find_gap_threshold(results, lower_rate), find_gap_threshold(results, upper_rate))
+        gap_filters.append(filter)
+    return gap_filters
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description='description')
     parser.add_argument('--num-shots', type=int, default=1000)
@@ -381,7 +412,6 @@ def main() -> None:
     parser.add_argument('--distance1', type=int, default=3)
     parser.add_argument('--distance2', type=int, default=7)
     parser.add_argument('--rounds-for-gap', type=int, default=7)
-    parser.add_argument('--cutoff-gap', type=float, default=100.0)
     parser.add_argument('--show-progress', action='store_true')
     parser.add_argument('--print-circuit', action='store_true')
 
@@ -394,7 +424,6 @@ def main() -> None:
     print('  distance1 = {}'.format(args.distance1))
     print('  distance2 = {}'.format(args.distance2))
     print('  rounds-for-gap = {}'.format(args.rounds_for_gap))
-    print('  cutoff-gap = {}'.format(args.cutoff_gap))
     print('  show-progress = {}'.format(args.show_progress))
     print('  print-circuit = {}'.format(args.print_circuit))
 
@@ -405,7 +434,6 @@ def main() -> None:
     distance1: int = args.distance1
     distance2: int = args.distance2
     rounds_for_gap: int = args.rounds_for_gap
-    cutoff_gap: float = args.cutoff_gap
     show_progress: bool = args.show_progress
     print_circuit: bool = args.print_circuit
 
@@ -424,40 +452,53 @@ def main() -> None:
     if num_shots == 0:
         return
 
-    results = perform_parallel_simulation(
+    initial_shots = 100_000
+    [initial_results] = perform_parallel_simulation(
         circuit,
         detector_for_complementary_gap,
-        cutoff_gap,
+        [(0, math.inf)],
+        initial_shots,
+        parallelism,
+        max_shots_per_task,
+        show_progress=False)
+    initial_results.uncategorized_samples.sort(key=lambda r: r.gap)
+
+    discard_rates = [0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
+    gap_filters: list[tuple[float, float]] = construct_gap_filters(discard_rates, initial_results, 0.02)
+    assert len(discard_rates) == len(gap_filters)
+    for (rate, (low, high)) in zip(discard_rates, gap_filters):
+        print('Gap filter for cutoff rate {:4.1f}% is ({:.4f}, {:.4f}).'.format(rate * 100, low, high))
+
+    list_of_results = perform_parallel_simulation(
+        circuit,
+        detector_for_complementary_gap,
+        gap_filters,
         num_shots,
         parallelism,
         max_shots_per_task,
         show_progress)
 
-    print('#VALID with large gap = {}, #WRONG with large gap = {}'.format(
-        results.num_valid_samples_with_large_gap, results.num_wrong_samples_with_large_gap
-    ))
-    results.samples_with_small_gap.sort(key=lambda r: r.gap())
+    for results in list_of_results:
+        results.uncategorized_samples.sort(key=lambda r: r.gap)
 
     discard_rates = [0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
-    for rate in discard_rates:
-        num_discarded = max(
-            min(int(rate * len(results)), len(results.samples_with_small_gap)), results.num_discarded_samples)
-        max_gap = -math.inf
+    for (rate, results) in zip(discard_rates, list_of_results):
+        num_valid = results.num_valid_samples
+        num_wrong = results.num_wrong_samples
+        num_discarded = results.num_discarded_samples
 
-        num_valid = results.num_valid_samples_with_large_gap
-        num_wrong = results.num_wrong_samples_with_large_gap
+        num_to_be_discarded = round(len(results) * rate)
 
-        num_discarded_by_complementary_gap = num_discarded - results.num_discarded_samples
-        if num_discarded_by_complementary_gap:
-            max_gap = results.samples_with_small_gap[num_discarded_by_complementary_gap - 1].gap()
-        for r in results.samples_with_small_gap[num_discarded_by_complementary_gap:]:
-            if r.expected:
+        for sample in results.uncategorized_samples:
+            if num_discarded < num_to_be_discarded:
+                num_discarded += 1
+            elif sample.expected:
                 num_valid += 1
             else:
                 num_wrong += 1
+
         print('Discard {:.1f}% samples, VALID = {}, WRONG = {}, DISCARDED = {}'.format(
             rate * 100, num_valid, num_wrong, num_discarded))
-        print('max gap = {}'.format(max_gap))
         print('WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
         print()
 
