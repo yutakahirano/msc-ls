@@ -438,7 +438,7 @@ def main() -> None:
     max_shots_per_task: int = args.max_shots_per_task
     distance1: int = args.distance1
     distance2: int = args.distance2
-    threshold_gap: int | None = args.threshold_gap
+    threshold_gap: float | None = args.threshold_gap
     rounds_for_gap: int = args.rounds_for_gap
     show_progress: bool = args.show_progress
     print_circuit: bool = args.print_circuit
