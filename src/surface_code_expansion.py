@@ -414,6 +414,7 @@ def main() -> None:
     parser.add_argument('--max-shots-per-task', type=int, default=2 ** 20)
     parser.add_argument('--distance1', type=int, default=3)
     parser.add_argument('--distance2', type=int, default=7)
+    parser.add_argument('--threshold-gap', type=float)
     parser.add_argument('--rounds-for-gap', type=int, default=7)
     parser.add_argument('--show-progress', action='store_true')
     parser.add_argument('--print-circuit', action='store_true')
@@ -426,6 +427,7 @@ def main() -> None:
     print('  max-shots-per-task = {}'.format(args.max_shots_per_task))
     print('  distance1 = {}'.format(args.distance1))
     print('  distance2 = {}'.format(args.distance2))
+    print('  threshold-gap = {}'.format(args.threshold_gap))
     print('  rounds-for-gap = {}'.format(args.rounds_for_gap))
     print('  show-progress = {}'.format(args.show_progress))
     print('  print-circuit = {}'.format(args.print_circuit))
@@ -436,6 +438,7 @@ def main() -> None:
     max_shots_per_task: int = args.max_shots_per_task
     distance1: int = args.distance1
     distance2: int = args.distance2
+    threshold_gap: int | None = args.threshold_gap
     rounds_for_gap: int = args.rounds_for_gap
     show_progress: bool = args.show_progress
     print_circuit: bool = args.print_circuit
@@ -453,6 +456,23 @@ def main() -> None:
         print(circuit.circuit)
 
     if num_shots == 0:
+        return
+
+    if threshold_gap is not None:
+        [results] = perform_parallel_simulation(
+            circuit,
+            detector_for_complementary_gap,
+            [(threshold_gap, threshold_gap)],
+            num_shots,
+            parallelism,
+            max_shots_per_task,
+            show_progress)
+        assert len(results.uncategorized_samples) == 0
+        num_valid = results.num_valid_samples
+        num_wrong = results.num_wrong_samples
+        num_discarded = results.num_discarded_samples
+        print('VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
+        print('WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
         return
 
     initial_shots = 100_000
