@@ -1,9 +1,9 @@
-from util import Circuit
+from util import Circuit, MultiplexingCircuit
 
 
 class SteaneZ0145SyndromeMeasurement:
-    def __init__(self, circuit: Circuit) -> None:
-        self.circuit: Circuit = circuit
+    def __init__(self, circuit: Circuit | MultiplexingCircuit) -> None:
+        self.circuit: Circuit | MultiplexingCircuit = circuit
         self.has_initialized_ancillae = False
         self.has_entangled_ancillae = False
         self.has_performed_cx_0 = False
@@ -135,8 +135,8 @@ class SteaneZ0145SyndromeMeasurement:
 
 
 class SteaneZ0235SyndromeMeasurement:
-    def __init__(self, circuit: Circuit) -> None:
-        self.circuit: Circuit = circuit
+    def __init__(self, circuit: Circuit | MultiplexingCircuit) -> None:
+        self.circuit: Circuit | MultiplexingCircuit = circuit
         self.has_initialized_ancillae = False
         self.has_entangled_ancillae = False
         self.has_performed_cx_0 = False
@@ -268,8 +268,8 @@ class SteaneZ0235SyndromeMeasurement:
 
 
 class SteaneZ0246SyndromeMeasurement:
-    def __init__(self, circuit: Circuit) -> None:
-        self.circuit: Circuit = circuit
+    def __init__(self, circuit: Circuit | MultiplexingCircuit) -> None:
+        self.circuit: Circuit | MultiplexingCircuit = circuit
         self.has_initialized_ancillae = False
         self.has_entangled_ancillae_ab = False
         self.has_entangled_ancillae_ac = False

@@ -4,7 +4,7 @@ import enum
 
 from enum import auto
 from collections.abc import Callable
-from util import Circuit, MeasurementIdentifier
+from util import Circuit, MeasurementIdentifier, MultiplexingCircuit
 
 
 class SurfaceStabilizerPattern(enum.Enum):
@@ -22,7 +22,7 @@ class SurfaceZSyndromeMeasurement:
     '''
 
     def __init__(
-            self, circuit: Circuit, ancilla_position: tuple[int, int],
+            self, circuit: Circuit | MultiplexingCircuit, ancilla_position: tuple[int, int],
             pattern: SurfaceStabilizerPattern, already_satisfied: bool) -> None:
         '''\
         When `already_satisfied` is true, the initial syndrome is added as a
@@ -133,7 +133,7 @@ class SurfaceXSyndromeMeasurement:
     An X syndrome measurement for the surface code.
     '''
     def __init__(
-            self, circuit: Circuit, ancilla_position: tuple[int, int],
+            self, circuit: Circuit | MultiplexingCircuit, ancilla_position: tuple[int, int],
             pattern: SurfaceStabilizerPattern, already_satisfied: bool) -> None:
         '''\
         When `already_satisfied` is true, the initial syndrome is added as a

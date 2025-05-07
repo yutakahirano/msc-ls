@@ -1,6 +1,6 @@
 import unittest
 
-from main import *
+from lattice_surgery_error_detection import *
 
 
 class SteanePlusSurfaceCodeTest(unittest.TestCase):
