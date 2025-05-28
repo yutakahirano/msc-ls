@@ -10,9 +10,8 @@ import stim
 
 from concurrent.futures import ProcessPoolExecutor
 from enum import auto
-from util import QubitMapping, Circuit, MultiplexingCircuit
+from util import QubitMapping, Circuit
 from util import MeasurementIdentifier, DetectorIdentifier, ObservableIdentifier, SuppressNoise
-from steane_code import SteaneZ0145SyndromeMeasurement, SteaneZ0235SyndromeMeasurement, SteaneZ0246SyndromeMeasurement
 from surface_code import SurfaceStabilizerPattern, SurfaceSyndromeMeasurement
 from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
 
@@ -59,6 +58,14 @@ class SurfacePatch:
 
         m: SurfaceSyndromeMeasurement
 
+        match self.initial_value:
+            case InitialValue.Plus:
+                already_satisfied_x = True
+                already_satisfied_z = False
+            case InitialValue.Zero:
+                already_satisfied_x = False
+                already_satisfied_z = True
+
         for i in range(distance):
             for j in range(distance):
                 x = offset_x + j * 2
@@ -66,24 +73,24 @@ class SurfacePatch:
 
                 # Weight-two syndrome measurements:
                 if i == 0 and j % 2 == 0 and j < distance - 1:
-                    m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, True)
+                    m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, already_satisfied_x)
                     self.syndrome_measurements[(x + 1, y - 1)] = m
                 if i == distance - 1 and j % 2 == 1:
-                    m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), TWO_WEIGHT_UP, True)
+                    m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), TWO_WEIGHT_UP, already_satisfied_x)
                     self.syndrome_measurements[(x + 1, y + 1)] = m
                 if j == 0 and i % 2 == 1:
-                    m = SurfaceZSyndromeMeasurement(self.circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, False)
+                    m = SurfaceZSyndromeMeasurement(self.circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, already_satisfied_z)
                     self.syndrome_measurements[(x - 1, y + 1)] = m
                 if j == distance - 1 and i % 2 == 0 and i < distance - 1:
-                    m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y + 1), TWO_WEIGHT_LEFT, False)
+                    m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y + 1), TWO_WEIGHT_LEFT, already_satisfied_z)
                     self.syndrome_measurements[(x + 1, y + 1)] = m
 
                 # Weight-four syndrome measurements:
                 if i < distance - 1 and j < distance - 1:
                     if (i + j) % 2 == 0:
-                        m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, False)
+                        m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, already_satisfied_z)
                     else:
-                        m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, True)
+                        m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, already_satisfied_x)
                     self.syndrome_measurements[(x + 1, y + 1)] = m
 
         if self.full_post_selection:
@@ -105,7 +112,11 @@ class SurfacePatch:
                 for j in range(distance):
                     x = offset_x + j * 2
                     y = offset_y + i * 2
-                    circuit.place_reset_x((x, y))
+                    match self.initial_value:
+                        case InitialValue.Plus:
+                            circuit.place_reset_x((x, y))
+                        case InitialValue.Zero:
+                            circuit.place_reset_z((x, y))
             for _ in range(depth_for_surface_code_syndrome_measurement):
                 for m in self.syndrome_measurements.values():
                     m.run()
@@ -131,7 +142,6 @@ class SurfacePatch:
             control_id = mapping.get_id(x, y)
             stim_circuit.append('CX', [control_id, self.z_boundary_ancilla_id])
         stim_circuit.append('M', self.z_boundary_ancilla_id)
-        ls = [stim.target_rec(-1)]
         stim_circuit.append('DETECTOR', [stim.target_rec(-1)])
 
         for i in range(distance):
@@ -149,21 +159,13 @@ class SurfacePatch:
                 self._perform_perfect_destructive_x_measurement()
                 measurements = self.x_measurements
                 assert len(measurements) == distance * distance
-                xs = [
-                    measurements[
-                        (offset_x, offset_y + i * 2)
-                    ] for i in range(distance)
-                ]
+                xs = [measurements[(offset_x, offset_y + i * 2)] for i in range(distance)]
                 circuit.place_observable_include(xs, ObservableIdentifier(0))
             case InitialValue.Zero:
                 self._perform_perfect_destructive_z_measurement()
                 measurements = self.z_measurements
                 assert len(measurements) == distance * distance
-                zs = [
-                    measurements[
-                        (offset_x + j * 2, offset_y + 2 * 0)
-                    ] for j in range(distance)
-                ]
+                zs = [measurements[(offset_x + j * 2, offset_y)] for j in range(distance)]
                 circuit.place_observable_include(zs, ObservableIdentifier(0))
 
     def _perform_perfect_destructive_x_measurement(self) -> None:
