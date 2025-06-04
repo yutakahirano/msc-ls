@@ -20,6 +20,7 @@ from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasuremen
 class InitialValue(enum.Enum):
     Plus = auto(),
     Zero = auto(),
+    SPlus = auto(),
 
 
 # Representing a merged QEC code of the Steane code and the rotated surface code.
@@ -46,8 +47,6 @@ class SteanePlusSurfaceCode:
         self.surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
         self.lattice_surgery_syndrome_measurements: list[SurfaceSyndromeMeasurement] = []
         self.steane_x_measurements: list[MeasurementIdentifier] = []
-        self.surface_x_measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
-        self.surface_z_measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
         self.surface_code_offset_x = 1
         self.surface_code_offset_y = 7
         self.x_detector_for_complementary_gap: DetectorIdentifier | None = None
@@ -140,6 +139,8 @@ class SteanePlusSurfaceCode:
                 self._perform_perfect_steane_plus_initialization()
             case InitialValue.Zero:
                 self._perform_perfect_steane_zero_initialization()
+            case InitialValue.SPlus:
+                self._perform_perfect_steane_s_plus_initialization()
 
         STEANE_6 = (2, 0)
         STEANE_4 = (0, 2)
@@ -163,9 +164,8 @@ class SteanePlusSurfaceCode:
         if not self.full_post_selection:
             for m in self.surface_syndrome_measurements.values():
                 m.set_post_selection(False)
-            # We perform one-round of syndrome measurements at the end of `_perform_lattice_surgery()`, and
-            # we perform two-rounds of syndrome measurements above. Hence, here we perform
-            # `(surface_distance - 3)` rounds of syndrome measurments.
+            # We perform one-round of syndrome measurements at the end of `_perform_lattice_surgery()`.
+            # Hence, here we perform `(surface_distance - 1)` rounds of syndrome measurments.
             for i in range(depth_for_surface_code_syndrome_measurement * (surface_distance - 1)):
                 for m in self.surface_syndrome_measurements.values():
                     m.run()
@@ -174,11 +174,14 @@ class SteanePlusSurfaceCode:
         steane_logical_x_measurements: list[MeasurementIdentifier] = [
             self.steane_x_measurements[1], self.steane_x_measurements[4], self.steane_x_measurements[6]
         ]
+        lattice_surgery_measurements: list[MeasurementIdentifier] = []
+        for m in self.lattice_surgery_syndrome_measurements:
+            last = m.last_measurement
+            assert last is not None
+            lattice_surgery_measurements.append(last)
 
         for c in [self.primal_circuit, self.partially_noiseless_circuit]:
             stim_circuit = c.circuit
-            mapping = self.mapping
-
             for j in range(surface_distance):
                 x = surface_code_offset_x + j * 2
                 y = surface_code_offset_y
@@ -191,73 +194,35 @@ class SteanePlusSurfaceCode:
                 target_id = mapping.get_id(x, y)
                 stim_circuit.append('CX', [self.x_boundary_ancilla_id, target_id])
 
-            ls = [stim.target_rec(-1)]
-            for m in self.lattice_surgery_syndrome_measurements:
-                last = m.last_measurement
-                assert last is not None
-                ls.append(last.target_rec(c))
-            stim_circuit.append('DETECTOR', ls)
+            stim_circuit.append(
+                'DETECTOR', [stim.target_rec(-1)] + [m.target_rec(c) for m in lattice_surgery_measurements])
             stim_circuit.append('MX', self.x_boundary_ancilla_id)
-            stim_circuit.append('DETECTOR', [stim.target_rec(-1)] + [
-                m.target_rec(c) for m in steane_logical_x_measurements
-            ])
+            stim_circuit.append(
+                'DETECTOR', [stim.target_rec(-1)] + [m.target_rec(c) for m in steane_logical_x_measurements])
         assert self.primal_circuit.circuit.num_detectors == self.partially_noiseless_circuit.circuit.num_detectors
         self.x_detector_for_complementary_gap = DetectorIdentifier(self.primal_circuit.circuit.num_detectors - 2)
         self.z_detector_for_complementary_gap = DetectorIdentifier(self.primal_circuit.circuit.num_detectors - 1)
 
-        match self.initial_value:
-            case InitialValue.Plus:
-                self._perform_perfect_destructive_x_measurement()
-                measurements = self.surface_x_measurements
-                assert len(measurements) == surface_distance * surface_distance
-                xs = [
-                    measurements[
-                        (surface_code_offset_x, surface_code_offset_y + i * 2)
-                    ] for i in range(surface_distance)
-                ] + [
-                    self.steane_x_measurements[1], self.steane_x_measurements[4], self.steane_x_measurements[6]
-                ]
-                circuit.place_observable_include(xs, ObservableIdentifier(0))
-            case InitialValue.Zero:
-                self._perform_perfect_destructive_z_measurement()
-                measurements = self.surface_z_measurements
-                assert len(measurements) == surface_distance * surface_distance
-                zs = [
-                    measurements[
-                        (surface_code_offset_x + j * 2, surface_code_offset_y + 2 * 0)
-                    ] for j in range(surface_distance)
-                ]
-                for m in self.lattice_surgery_syndrome_measurements:
-                    last = m.last_measurement
-                    assert last is not None
-                    zs.append(last)
-                circuit.place_observable_include(zs, ObservableIdentifier(0))
+        # Perfect verification of the resultant state.
+        with SuppressNoise(circuit):
+            for _ in range(depth_for_surface_code_syndrome_measurement):
+                for m in self.surface_syndrome_measurements.values():
+                    m.run()
+                circuit.place_tick()
 
-    def run_surface_only(self) -> None:
-        depth_for_surface_code_syndrome_measurement = 6
-        surface_distance = self.surface_distance
-        circuit = self.circuit
-
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
-
-        for i in range(surface_distance):
-            for j in range(surface_distance):
-                x = surface_code_offset_x + j * 2
-                y = surface_code_offset_y + i * 2
-                # Data qubits:
-                circuit.place_reset_x((x, y))
-
-        for _ in range(depth_for_surface_code_syndrome_measurement * surface_distance):
-            for m in self.surface_syndrome_measurements.values():
-                m.run()
-            circuit.place_tick()
-
-        self._perform_perfect_destructive_x_measurement()
-        measurements = self.surface_x_measurements
-
-        xs = [measurements[(surface_code_offset_x, surface_code_offset_y + i * 2)] for i in range(surface_distance)]
-        circuit.place_observable_include(xs, ObservableIdentifier(0))
+            ms: list[MeasurementIdentifier] = []
+            match self.initial_value:
+                case InitialValue.Plus:
+                    ms.append(circuit.place_mpp(self._logical_x_pauli_string()))
+                    ms.extend(steane_logical_x_measurements)
+                case InitialValue.Zero:
+                    ms.append(circuit.place_mpp(self._logical_z_pauli_string()))
+                    ms.extend(lattice_surgery_measurements)
+                case InitialValue.SPlus:
+                    ms.append(circuit.place_mpp(self._logical_y_pauli_string()))
+                    ms.extend(steane_logical_x_measurements)
+                    ms.extend(lattice_surgery_measurements)
+            circuit.place_observable_include(ms, ObservableIdentifier(0))
 
     def _perform_lattice_surgery(self) -> None:
         depth_for_surface_code_syndrome_measurement = 6
@@ -400,101 +365,34 @@ class SteanePlusSurfaceCode:
         assert last is not None
         circuit.place_detector([m0, m1, m4, m5, last], post_selection=True)
 
-    def _perform_perfect_destructive_x_measurement(self) -> None:
+    def _logical_x_pauli_string(self) -> stim.PauliString:
         surface_distance = self.surface_distance
-        circuit = self.circuit
+        mapping = self.mapping
         surface_code_offset_x = self.surface_code_offset_x
         surface_code_offset_y = self.surface_code_offset_y
-        post_selection = self.full_post_selection
 
-        last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
-            pos: m.last_measurement for (pos, m) in self.surface_syndrome_measurements.items()
-        }
-        measurements: dict[tuple[int, int], MeasurementIdentifier] = self.surface_x_measurements
-        assert len(measurements) == 0
+        logical_x: stim.PauliString = stim.PauliString()
+        for i in range(surface_distance):
+            x = surface_code_offset_x
+            y = surface_code_offset_y + i * 2
+            logical_x *= stim.PauliString('X{}'.format(mapping.get_id(x, y)))
+        return logical_x
 
-        with SuppressNoise(circuit):
-            for i in range(surface_distance):
-                for j in range(surface_distance):
-                    x = surface_code_offset_x + j * 2
-                    y = surface_code_offset_y + i * 2
-                    id = circuit.place_measurement_x((x, y))
-                    measurements[(x, y)] = id
-
-            for i in range(surface_distance):
-                for j in range(surface_distance):
-                    x = surface_code_offset_x + j * 2
-                    y = surface_code_offset_y + i * 2
-
-                    # Weight-two syndrome measurements:
-                    if i == 0 and j % 2 == 0 and j < surface_distance - 1:
-                        last = last_measurements[(x + 1, y - 1)]
-                        assert last is not None
-                        circuit.place_detector([measurements[(x, y)], measurements[(x + 2, y)], last], post_selection)
-                    if i == surface_distance - 1 and j % 2 == 1:
-                        last = last_measurements[(x + 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([measurements[(x, y)], measurements[(x + 2, y)], last], post_selection)
-
-                    # Weight-four syndrome measurements:
-                    if i < surface_distance - 1 and j < surface_distance - 1 and (i + j) % 2 == 1:
-                        last = last_measurements[(x + 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([
-                            measurements[(x, y)],
-                            measurements[(x + 2, y)],
-                            measurements[(x, y + 2)],
-                            measurements[(x + 2, y + 2)],
-                            last
-                        ], post_selection=post_selection)
-
-    def _perform_perfect_destructive_z_measurement(self) -> None:
+    def _logical_z_pauli_string(self) -> stim.PauliString:
         surface_distance = self.surface_distance
-        circuit = self.circuit
+        mapping = self.mapping
         surface_code_offset_x = self.surface_code_offset_x
         surface_code_offset_y = self.surface_code_offset_y
-        post_selection = self.full_post_selection
 
-        last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
-            pos: m.last_measurement for (pos, m) in self.surface_syndrome_measurements.items()
-        }
-        measurements: dict[tuple[int, int], MeasurementIdentifier] = self.surface_z_measurements
-        assert len(measurements) == 0
+        logical_z: stim.PauliString = stim.PauliString()
+        for j in range(surface_distance):
+            x = surface_code_offset_x + j * 2
+            y = surface_code_offset_y
+            logical_z *= stim.PauliString('Z{}'.format(mapping.get_id(x, y)))
+        return logical_z
 
-        with SuppressNoise(circuit):
-            for i in range(surface_distance):
-                for j in range(surface_distance):
-                    x = surface_code_offset_x + j * 2
-                    y = surface_code_offset_y + i * 2
-                    id = circuit.place_measurement_z((x, y))
-                    measurements[(x, y)] = id
-
-            for i in range(surface_distance):
-                for j in range(surface_distance):
-                    x = surface_code_offset_x + j * 2
-                    y = surface_code_offset_y + i * 2
-
-                    # Weight-two syndrome measurements:
-                    if j == 0 and i % 2 == 1:
-                        last = last_measurements[(x - 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last], post_selection)
-                    if j == surface_distance - 1 and i % 2 == 0 and i < surface_distance - 1:
-                        last = last_measurements[(x + 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last], post_selection)
-
-                    # Weight-four syndrome measurements:
-                    if i < surface_distance - 1 and j < surface_distance - 1 and (i + j) % 2 == 0:
-                        last = last_measurements[(x + 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([
-                            measurements[(x, y)],
-                            measurements[(x + 2, y)],
-                            measurements[(x, y + 2)],
-                            measurements[(x + 2, y + 2)],
-                            last
-                        ], post_selection)
+    def _logical_y_pauli_string(self) -> stim.PauliString:
+        return self._logical_x_pauli_string() * self._logical_z_pauli_string()
 
     # Places a circuit encoding a perfect logical |+⟩ to the Steane code.
     # The placed gates ignore the connectivity restrictions.
@@ -560,6 +458,26 @@ class SteanePlusSurfaceCode:
             stim_circuit.append('CX', [STEANE_2, STEANE_0])
             stim_circuit.append('CX', [STEANE_3, STEANE_5])
 
+    def _perform_perfect_steane_s_plus_initialization(self) -> None:
+        mapping = self.mapping
+        STEANE_6 = mapping.get_id(2, 0)
+        STEANE_2 = mapping.get_id(4, 2)
+        STEANE_4 = mapping.get_id(0, 2)
+        STEANE_0 = mapping.get_id(3, 3)
+        STEANE_1 = mapping.get_id(1, 5)
+        STEANE_5 = mapping.get_id(3, 5)
+        STEANE_3 = mapping.get_id(5, 5)
+
+        self._perform_perfect_steane_plus_initialization()
+        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
+            stim_circuit.append('S', STEANE_0)
+            stim_circuit.append('S', STEANE_1)
+            stim_circuit.append('S', STEANE_2)
+            stim_circuit.append('S', STEANE_3)
+            stim_circuit.append('S', STEANE_4)
+            stim_circuit.append('S', STEANE_5)
+            stim_circuit.append('S', STEANE_6)
+
 
 class UncategorizedSample:
     def __init__(self, gap: float, expected: bool) -> None:
@@ -612,6 +530,7 @@ def perform_simulation(
         x_detector_for_complementary_gap: DetectorIdentifier,
         z_detector_for_complementary_gap: DetectorIdentifier,
         gap_filters: list[tuple[float, float]],
+        seed: int | None,
         detectors_for_post_selection: list[DetectorIdentifier]) -> list[SimulationResults]:
 
     # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
@@ -621,7 +540,7 @@ def perform_simulation(
     matcher = pymatching.Matching.from_detector_error_model(dem)
 
     # However, we construct a sampler from `primal_stim_circuit` because it is *the real* circuit.
-    sampler = primal_stim_circuit.compile_detector_sampler()
+    sampler = primal_stim_circuit.compile_detector_sampler(seed=seed)
     detection_events, observable_flips = sampler.sample(num_shots, separate_observables=True)
 
     results = [SimulationResults(lower, upper) for (lower, upper) in gap_filters]
@@ -688,6 +607,7 @@ def perform_parallel_simulation(
                 x_detector_for_complementary_gap,
                 z_detector_for_complementary_gap,
                 gap_filters,
+                None,
                 primal_circuit.detectors_for_post_selection)
 
     results = [SimulationResults(lower, upper) for (lower, upper) in gap_filters]
@@ -698,6 +618,7 @@ def perform_parallel_simulation(
 
         num_shots_per_task = min(num_shots_per_task, (num_shots + parallelism - 1) // parallelism)
         while remaining_shots > 0:
+            seed = None
             num_shots_for_this_task = min(num_shots_per_task, remaining_shots)
             remaining_shots -= num_shots_for_this_task
             future = executor.submit(perform_simulation,
@@ -707,6 +628,7 @@ def perform_parallel_simulation(
                                      x_detector_for_complementary_gap,
                                      z_detector_for_complementary_gap,
                                      gap_filters,
+                                     seed,
                                      primal_circuit.detectors_for_post_selection)
             futures.append(future)
         try:
@@ -775,7 +697,7 @@ def main() -> None:
     parser.add_argument('--parallelism', type=int, default=1)
     parser.add_argument('--max-shots-per-task', type=int, default=2 ** 20)
     parser.add_argument('--surface-distance', type=int, default=3)
-    parser.add_argument('--initial-value', choices=['+', '0'], default='+')
+    parser.add_argument('--initial-value', choices=['+', '0', 'S+'], default='+')
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--print-circuit', action='store_true')
     parser.add_argument('--show-progress', action='store_true')
@@ -802,6 +724,8 @@ def main() -> None:
             initial_value = InitialValue.Plus
         case '0':
             initial_value = InitialValue.Zero
+        case 'S+':
+            initial_value = InitialValue.SPlus
         case _:
             assert False
     full_post_selection: bool = args.full_post_selection
@@ -840,6 +764,7 @@ def main() -> None:
 
     discard_rates = [0, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
     gap_filters: list[tuple[float, float]] = construct_gap_filters(discard_rates, initial_results, 0.02)
+
     assert len(discard_rates) == len(gap_filters)
     for (rate, (low, high)) in zip(discard_rates, gap_filters):
         print('Gap filter for cutoff rate {:4.1f}% is ({:.4f}, {:.4f}).'.format(rate * 100, low, high))

@@ -103,6 +103,20 @@ class CircuitTest(unittest.TestCase):
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(i.id, 0)
 
+    def test_place_mpp(self):
+        mapping = QubitMapping(20, 20)
+        circuit = Circuit(mapping, 0.01)
+        prologue = str(circuit.circuit)
+
+        i = circuit.place_mpp(stim.PauliString('X0*Z2*Y3'))
+        expectation = prologue + textwrap.dedent('''
+        Z_ERROR(0.01) 0
+        X_ERROR(0.01) 2
+        Z_ERROR(0.01) 3
+        MPP X0*Z2*Y3''')
+        self.assertEqual(str(circuit.circuit), expectation)
+        self.assertEqual(i.id, 0)
+
     def test_place_tick_and_tained(self):
         mapping = QubitMapping(4, 4)
         circuit = Circuit(mapping, 0.01)

@@ -203,6 +203,31 @@ class Circuit:
         self.tainted_qubits.append(target)
         return MeasurementIdentifier(self.circuit.num_measurements - 1)
 
+    def place_mpp(self, target: stim.PauliString) -> MeasurementIdentifier:
+        '''Places a multi-qubit Pauli product measurement, and returns the measurement ID.'''
+        for (i, p) in enumerate(target):
+            if p == 0:
+                continue
+            if i in self.tainted_qubits:
+                raise ValueError(f'Cannot place MPP gate on tainted qubit {i}.')
+        for (i, p) in enumerate(target):
+            if p == 0:
+                continue
+            self.tainted_qubits.append(i)
+            if i in self.noiseless_qubits or self.error_probability == 0:
+                continue
+            match p:
+                case 1:  # X
+                    self.circuit.append('Z_ERROR', i, self.error_probability)
+                case 2:  # Y
+                    self.circuit.append('Z_ERROR', i, self.error_probability)
+                case 3:  # Z
+                    self.circuit.append('X_ERROR', i, self.error_probability)
+                case _:
+                    raise ValueError(f'Invalid Pauli value {p} for qubit {i}.')
+        self.circuit.append('MPP', [target])
+        return MeasurementIdentifier(self.circuit.num_measurements - 1)
+
     def place_detector(
             self, measurements: list[MeasurementIdentifier], post_selection: bool = False) -> DetectorIdentifier:
         '''Places a detector with the given measurements.'''
@@ -229,6 +254,8 @@ class MultiplexingCircuit:
     def __init__(self, circuit1: Circuit, circuit2: Circuit):
         self.circuit1 = circuit1
         self.circuit2 = circuit2
+        assert circuit1.mapping is circuit2.mapping
+        self.mapping = circuit1.mapping
 
     def is_tainted_by_id(self, id: int) -> bool:
         return self.circuit1.is_tainted_by_id(id)
@@ -265,6 +292,12 @@ class MultiplexingCircuit:
     def place_measurement_x(self, target_position: tuple[int, int]) -> MeasurementIdentifier:
         m1 = self.circuit1.place_measurement_x(target_position)
         m2 = self.circuit2.place_measurement_x(target_position)
+        assert m1 == m2
+        return m1
+
+    def place_mpp(self, target: stim.PauliString) -> MeasurementIdentifier:
+        m1 = self.circuit1.place_mpp(target)
+        m2 = self.circuit2.place_mpp(target)
         assert m1 == m2
         return m1
 
