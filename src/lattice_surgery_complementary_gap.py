@@ -8,11 +8,14 @@ import numpy as np
 import pymatching
 import stim
 
+import steane_code
+
 from concurrent.futures import ProcessPoolExecutor
 from enum import auto
 from util import QubitMapping, Circuit, MultiplexingCircuit
 from util import MeasurementIdentifier, DetectorIdentifier, ObservableIdentifier, SuppressNoise
 from steane_code import SteaneZ0145SyndromeMeasurement, SteaneZ0235SyndromeMeasurement, SteaneZ0246SyndromeMeasurement
+from steane_code import STEANE_0, STEANE_1, STEANE_2, STEANE_3, STEANE_4, STEANE_5, STEANE_6
 from surface_code import SurfaceStabilizerPattern, SurfaceSyndromeMeasurement
 from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
 
@@ -134,17 +137,15 @@ class SteanePlusSurfaceCode:
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-        match self.initial_value:
-            case InitialValue.Plus:
-                self._perform_perfect_steane_plus_initialization()
-            case InitialValue.Zero:
-                self._perform_perfect_steane_zero_initialization()
-            case InitialValue.SPlus:
-                self._perform_perfect_steane_s_plus_initialization()
+        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
+            match self.initial_value:
+                case InitialValue.Plus:
+                    steane_code.perform_perfect_steane_plus_initialization(stim_circuit, mapping)
+                case InitialValue.Zero:
+                    steane_code.perform_perfect_steane_zero_initialization(stim_circuit, mapping)
+                case InitialValue.SPlus:
+                    steane_code.perform_perfect_steane_s_plus_initialization(stim_circuit, mapping)
 
-        STEANE_6 = (2, 0)
-        STEANE_4 = (0, 2)
-        STEANE_1 = (1, 5)
         for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
             stim_circuit.append('RX', self.x_boundary_ancilla_id)
             stim_circuit.append('CX', [self.x_boundary_ancilla_id, mapping.get_id(*STEANE_1)])
@@ -243,14 +244,6 @@ class SteanePlusSurfaceCode:
                 if i == 0 and j % 2 == 0 and j < surface_distance - 1:
                     # This stabilizer conflicts with the lattice surgery, let's remove it.
                     del self.surface_syndrome_measurements[(x + 1, y - 1)]
-
-        STEANE_6 = (2, 0)
-        STEANE_2 = (4, 2)
-        STEANE_4 = (0, 2)
-        STEANE_0 = (3, 3)
-        STEANE_1 = (1, 5)
-        STEANE_5 = (3, 5)
-        STEANE_3 = (5, 5)
 
         m0: MeasurementIdentifier | None = None
         m1: MeasurementIdentifier | None = None
@@ -394,90 +387,6 @@ class SteanePlusSurfaceCode:
 
     def _logical_y_pauli_string(self) -> stim.PauliString:
         return self._logical_x_pauli_string() * self._logical_z_pauli_string()
-
-    # Places a circuit encoding a perfect logical |+⟩ to the Steane code.
-    # The placed gates ignore the connectivity restrictions.
-    def _perform_perfect_steane_plus_initialization(self) -> None:
-        mapping = self.mapping
-        STEANE_6 = mapping.get_id(2, 0)
-        STEANE_2 = mapping.get_id(4, 2)
-        STEANE_4 = mapping.get_id(0, 2)
-        STEANE_0 = mapping.get_id(3, 3)
-        STEANE_1 = mapping.get_id(1, 5)
-        STEANE_5 = mapping.get_id(3, 5)
-        STEANE_3 = mapping.get_id(5, 5)
-
-        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
-            stim_circuit.append('RX', STEANE_0)
-            stim_circuit.append('RX', STEANE_1)
-            stim_circuit.append('RX', STEANE_2)
-            stim_circuit.append('RX', STEANE_3)
-            stim_circuit.append('R', STEANE_4)
-            stim_circuit.append('R', STEANE_5)
-            stim_circuit.append('R', STEANE_6)
-
-            stim_circuit.append('CX', [STEANE_0, STEANE_5])
-            stim_circuit.append('CX', [STEANE_0, STEANE_6])
-            stim_circuit.append('CX', [STEANE_1, STEANE_0])
-            stim_circuit.append('CX', [STEANE_3, STEANE_4])
-            stim_circuit.append('CX', [STEANE_2, STEANE_6])
-            stim_circuit.append('CX', [STEANE_1, STEANE_5])
-            stim_circuit.append('CX', [STEANE_2, STEANE_4])
-            stim_circuit.append('CX', [STEANE_3, STEANE_6])
-            stim_circuit.append('CX', [STEANE_1, STEANE_4])
-            stim_circuit.append('CX', [STEANE_2, STEANE_0])
-            stim_circuit.append('CX', [STEANE_3, STEANE_5])
-
-    def _perform_perfect_steane_zero_initialization(self) -> None:
-        mapping = self.mapping
-        STEANE_6 = mapping.get_id(2, 0)
-        STEANE_2 = mapping.get_id(4, 2)
-        STEANE_4 = mapping.get_id(0, 2)
-        STEANE_0 = mapping.get_id(3, 3)
-        STEANE_1 = mapping.get_id(1, 5)
-        STEANE_5 = mapping.get_id(3, 5)
-        STEANE_3 = mapping.get_id(5, 5)
-
-        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
-            stim_circuit.append('R', STEANE_0)
-            stim_circuit.append('RX', STEANE_1)
-            stim_circuit.append('RX', STEANE_2)
-            stim_circuit.append('RX', STEANE_3)
-            stim_circuit.append('R', STEANE_4)
-            stim_circuit.append('R', STEANE_5)
-            stim_circuit.append('R', STEANE_6)
-
-            stim_circuit.append('CX', [STEANE_0, STEANE_5])
-            stim_circuit.append('CX', [STEANE_0, STEANE_6])
-            stim_circuit.append('CX', [STEANE_1, STEANE_0])
-            stim_circuit.append('CX', [STEANE_3, STEANE_4])
-            stim_circuit.append('CX', [STEANE_2, STEANE_6])
-            stim_circuit.append('CX', [STEANE_1, STEANE_5])
-            stim_circuit.append('CX', [STEANE_2, STEANE_4])
-            stim_circuit.append('CX', [STEANE_3, STEANE_6])
-            stim_circuit.append('CX', [STEANE_1, STEANE_4])
-            stim_circuit.append('CX', [STEANE_2, STEANE_0])
-            stim_circuit.append('CX', [STEANE_3, STEANE_5])
-
-    def _perform_perfect_steane_s_plus_initialization(self) -> None:
-        mapping = self.mapping
-        STEANE_6 = mapping.get_id(2, 0)
-        STEANE_2 = mapping.get_id(4, 2)
-        STEANE_4 = mapping.get_id(0, 2)
-        STEANE_0 = mapping.get_id(3, 3)
-        STEANE_1 = mapping.get_id(1, 5)
-        STEANE_5 = mapping.get_id(3, 5)
-        STEANE_3 = mapping.get_id(5, 5)
-
-        self._perform_perfect_steane_plus_initialization()
-        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
-            stim_circuit.append('S', STEANE_0)
-            stim_circuit.append('S', STEANE_1)
-            stim_circuit.append('S', STEANE_2)
-            stim_circuit.append('S', STEANE_3)
-            stim_circuit.append('S', STEANE_4)
-            stim_circuit.append('S', STEANE_5)
-            stim_circuit.append('S', STEANE_6)
 
 
 class UncategorizedSample:

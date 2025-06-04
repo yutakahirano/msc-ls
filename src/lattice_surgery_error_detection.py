@@ -6,9 +6,12 @@ import numpy as np
 import pymatching
 import sinter
 
+import steane_code
+
 from enum import auto
 from util import QubitMapping, Circuit, MeasurementIdentifier, ObservableIdentifier
 from steane_code import SteaneZ0145SyndromeMeasurement, SteaneZ0235SyndromeMeasurement, SteaneZ0246SyndromeMeasurement
+from steane_code import STEANE_0, STEANE_1, STEANE_2, STEANE_3, STEANE_4, STEANE_5, STEANE_6
 from surface_code import SurfaceStabilizerPattern, SurfaceSyndromeMeasurement
 from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
 
@@ -120,9 +123,9 @@ class SteanePlusSurfaceCode:
             circuit.place_tick()
         match self.initial_value:
             case InitialValue.Plus:
-                self._perform_perfect_steane_plus_initialization()
+                steane_code.perform_perfect_steane_plus_initialization(circuit.circuit, self.mapping)
             case InitialValue.Zero:
-                self._perform_perfect_steane_zero_initialization()
+                steane_code.perform_perfect_steane_zero_initialization(circuit.circuit, self.mapping)
         for m in self.surface_syndrome_measurements.values():
             m.run()
         circuit.place_tick()
@@ -215,14 +218,6 @@ class SteanePlusSurfaceCode:
                     if (j, i) == (1, 0) or (j, i) == (0, 1):
                         m = self.surface_syndrome_measurements[(x + 1, y + 1)]
                         m.set_post_selection(True)
-
-        STEANE_6 = (2, 0)
-        STEANE_2 = (4, 2)
-        STEANE_4 = (0, 2)
-        STEANE_0 = (3, 3)
-        STEANE_1 = (1, 5)
-        STEANE_5 = (3, 5)
-        STEANE_3 = (5, 5)
 
         m0: MeasurementIdentifier | None = None
         m1: MeasurementIdentifier | None = None
@@ -434,70 +429,6 @@ class SteanePlusSurfaceCode:
                         measurements[(x + 2, y + 2)],
                         last
                     ], post_selection)
-
-    # Places a circuit encoding a perfect logical |+⟩ to the Steane code.
-    # The placed gates ignore the connectivity restrictions.
-    def _perform_perfect_steane_plus_initialization(self) -> None:
-        circuit = self.circuit
-        mapping = circuit.mapping
-        STEANE_6 = mapping.get_id(2, 0)
-        STEANE_2 = mapping.get_id(4, 2)
-        STEANE_4 = mapping.get_id(0, 2)
-        STEANE_0 = mapping.get_id(3, 3)
-        STEANE_1 = mapping.get_id(1, 5)
-        STEANE_5 = mapping.get_id(3, 5)
-        STEANE_3 = mapping.get_id(5, 5)
-
-        circuit.circuit.append('RX', STEANE_0)
-        circuit.circuit.append('RX', STEANE_1)
-        circuit.circuit.append('RX', STEANE_2)
-        circuit.circuit.append('RX', STEANE_3)
-        circuit.circuit.append('R', STEANE_4)
-        circuit.circuit.append('R', STEANE_5)
-        circuit.circuit.append('R', STEANE_6)
-
-        circuit.circuit.append('CX', [STEANE_0, STEANE_5])
-        circuit.circuit.append('CX', [STEANE_0, STEANE_6])
-        circuit.circuit.append('CX', [STEANE_1, STEANE_0])
-        circuit.circuit.append('CX', [STEANE_3, STEANE_4])
-        circuit.circuit.append('CX', [STEANE_2, STEANE_6])
-        circuit.circuit.append('CX', [STEANE_1, STEANE_5])
-        circuit.circuit.append('CX', [STEANE_2, STEANE_4])
-        circuit.circuit.append('CX', [STEANE_3, STEANE_6])
-        circuit.circuit.append('CX', [STEANE_1, STEANE_4])
-        circuit.circuit.append('CX', [STEANE_2, STEANE_0])
-        circuit.circuit.append('CX', [STEANE_3, STEANE_5])
-
-    def _perform_perfect_steane_zero_initialization(self) -> None:
-        circuit = self.circuit
-        mapping = circuit.mapping
-        STEANE_6 = mapping.get_id(2, 0)
-        STEANE_2 = mapping.get_id(4, 2)
-        STEANE_4 = mapping.get_id(0, 2)
-        STEANE_0 = mapping.get_id(3, 3)
-        STEANE_1 = mapping.get_id(1, 5)
-        STEANE_5 = mapping.get_id(3, 5)
-        STEANE_3 = mapping.get_id(5, 5)
-
-        circuit.circuit.append('R', STEANE_0)
-        circuit.circuit.append('RX', STEANE_1)
-        circuit.circuit.append('RX', STEANE_2)
-        circuit.circuit.append('RX', STEANE_3)
-        circuit.circuit.append('R', STEANE_4)
-        circuit.circuit.append('R', STEANE_5)
-        circuit.circuit.append('R', STEANE_6)
-
-        circuit.circuit.append('CX', [STEANE_0, STEANE_5])
-        circuit.circuit.append('CX', [STEANE_0, STEANE_6])
-        circuit.circuit.append('CX', [STEANE_1, STEANE_0])
-        circuit.circuit.append('CX', [STEANE_3, STEANE_4])
-        circuit.circuit.append('CX', [STEANE_2, STEANE_6])
-        circuit.circuit.append('CX', [STEANE_1, STEANE_5])
-        circuit.circuit.append('CX', [STEANE_2, STEANE_4])
-        circuit.circuit.append('CX', [STEANE_3, STEANE_6])
-        circuit.circuit.append('CX', [STEANE_1, STEANE_4])
-        circuit.circuit.append('CX', [STEANE_2, STEANE_0])
-        circuit.circuit.append('CX', [STEANE_3, STEANE_5])
 
 
 def main() -> None:

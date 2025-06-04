@@ -1,4 +1,16 @@
-from util import Circuit, MultiplexingCircuit
+import stim
+
+from util import Circuit, MultiplexingCircuit, QubitMapping
+
+
+# These coordinates are hardcoded.
+STEANE_6 = (2, 0)
+STEANE_2 = (4, 2)
+STEANE_4 = (0, 2)
+STEANE_0 = (3, 3)
+STEANE_1 = (1, 5)
+STEANE_5 = (3, 5)
+STEANE_3 = (5, 5)
 
 
 class SteaneZ0145SyndromeMeasurement:
@@ -72,10 +84,6 @@ class SteaneZ0145SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        steane_0 = (3, 3)
-        steane_1 = (1, 5)
-        steane_4 = (0, 2)
-        steane_5 = (3, 5)
         ancilla_a = (1, 3)
         ancilla_b = (2, 4)
 
@@ -94,19 +102,19 @@ class SteaneZ0145SyndromeMeasurement:
                    self.has_performed_cx_4 and self.has_performed_cx_5):
             has_progress = False
             if not self.has_performed_cx_1 and not self.is_qubit1_locked:
-                if self._perform_cx(steane_1, ancilla_b):
+                if self._perform_cx(STEANE_1, ancilla_b):
                     self.has_performed_cx_1 = True
                     has_progress = True
             if not self.has_performed_cx_4:
-                if self._perform_cx(steane_4, ancilla_a):
+                if self._perform_cx(STEANE_4, ancilla_a):
                     self.has_performed_cx_4 = True
                     has_progress = True
             if not self.has_performed_cx_5 and not self.is_qubit5_locked:
-                if self._perform_cx(steane_5, ancilla_b):
+                if self._perform_cx(STEANE_5, ancilla_b):
                     self.has_performed_cx_5 = True
                     has_progress = True
             if not self.has_performed_cx_0:
-                if self._perform_cx(steane_0, ancilla_b):
+                if self._perform_cx(STEANE_0, ancilla_b):
                     self.has_performed_cx_0 = True
                     has_progress = True
             if not has_progress:
@@ -205,10 +213,6 @@ class SteaneZ0235SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        steane_0 = (3, 3)
-        steane_2 = (4, 2)
-        steane_3 = (5, 5)
-        steane_5 = (3, 5)
         ancilla_a = (5, 3)
         ancilla_b = (4, 4)
 
@@ -227,19 +231,19 @@ class SteaneZ0235SyndromeMeasurement:
                    self.has_performed_cx_3 and self.has_performed_cx_5):
             has_progress = False
             if not self.has_performed_cx_5 and not self.is_qubit5_locked:
-                if self._perform_cx(steane_5, ancilla_b):
+                if self._perform_cx(STEANE_5, ancilla_b):
                     self.has_performed_cx_5 = True
                     has_progress = True
             if not self.has_performed_cx_3 and not self.is_qubit3_locked:
-                if self._perform_cx(steane_3, ancilla_b):
+                if self._perform_cx(STEANE_3, ancilla_b):
                     self.has_performed_cx_3 = True
                     has_progress = True
             if not self.has_performed_cx_0:
-                if self._perform_cx(steane_0, ancilla_b):
+                if self._perform_cx(STEANE_0, ancilla_b):
                     self.has_performed_cx_0 = True
                     has_progress = True
             if not self.has_performed_cx_2:
-                if self._perform_cx(steane_2, ancilla_a):
+                if self._perform_cx(STEANE_2, ancilla_a):
                     self.has_performed_cx_2 = True
                     has_progress = True
             if not has_progress:
@@ -328,10 +332,6 @@ class SteaneZ0246SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        steane_0 = (3, 3)
-        steane_2 = (4, 2)
-        steane_4 = (0, 2)
-        steane_6 = (2, 0)
         ancilla_a = (2, 2)
         ancilla_b = (3, 1)
         ancilla_c = (1, 1)
@@ -356,23 +356,23 @@ class SteaneZ0246SyndromeMeasurement:
                    self.has_performed_cx_4 and self.has_performed_cx_6):
             has_progress = False
             if not self.has_performed_cx_0 and self.has_entangled_ancillae_ab and self.has_entangled_ancillae_ac:
-                if self._perform_cx(steane_0, ancilla_a):
+                if self._perform_cx(STEANE_0, ancilla_a):
                     self.has_performed_cx_0 = True
                     has_progress = True
             if not self.has_performed_cx_4 and self.has_entangled_ancillae_ac:
-                if self._perform_cx(steane_4, ancilla_c):
+                if self._perform_cx(STEANE_4, ancilla_c):
                     self.has_performed_cx_4 = True
                     has_progress = True
             if not self.has_performed_cx_2 and self.has_entangled_ancillae_ab:
-                if self._perform_cx(steane_2, ancilla_b):
+                if self._perform_cx(STEANE_2, ancilla_b):
                     self.has_performed_cx_2 = True
                     has_progress = True
             if not self.has_performed_cx_6 and self.has_entangled_ancillae_ab:
-                if self._perform_cx(steane_6, ancilla_b):
+                if self._perform_cx(STEANE_6, ancilla_b):
                     self.has_performed_cx_6 = True
                     has_progress = True
             if not self.has_performed_cx_6 and self.has_entangled_ancillae_ac:
-                if self._perform_cx(steane_6, ancilla_c):
+                if self._perform_cx(STEANE_6, ancilla_c):
                     self.has_performed_cx_6 = True
                     has_progress = True
             if not has_progress:
@@ -408,3 +408,75 @@ class SteaneZ0246SyndromeMeasurement:
             return False
         circuit.place_cx(control_position, target_position)
         return True
+
+
+def perform_perfect_steane_plus_initialization(stim_circuit: stim.Circuit, mapping: QubitMapping) -> None:
+    STEANE_0_ID = mapping.get_id(*STEANE_0)
+    STEANE_1_ID = mapping.get_id(*STEANE_1)
+    STEANE_2_ID = mapping.get_id(*STEANE_2)
+    STEANE_3_ID = mapping.get_id(*STEANE_3)
+    STEANE_4_ID = mapping.get_id(*STEANE_4)
+    STEANE_5_ID = mapping.get_id(*STEANE_5)
+    STEANE_6_ID = mapping.get_id(*STEANE_6)
+
+    stim_circuit.append('RX', STEANE_0_ID)
+    stim_circuit.append('RX', STEANE_1_ID)
+    stim_circuit.append('RX', STEANE_2_ID)
+    stim_circuit.append('RX', STEANE_3_ID)
+    stim_circuit.append('R', STEANE_4_ID)
+    stim_circuit.append('R', STEANE_5_ID)
+    stim_circuit.append('R', STEANE_6_ID)
+
+    stim_circuit.append('CX', [STEANE_0_ID, STEANE_5_ID])
+    stim_circuit.append('CX', [STEANE_0_ID, STEANE_6_ID])
+    stim_circuit.append('CX', [STEANE_1_ID, STEANE_0_ID])
+    stim_circuit.append('CX', [STEANE_3_ID, STEANE_4_ID])
+    stim_circuit.append('CX', [STEANE_2_ID, STEANE_6_ID])
+    stim_circuit.append('CX', [STEANE_1_ID, STEANE_5_ID])
+    stim_circuit.append('CX', [STEANE_2_ID, STEANE_4_ID])
+    stim_circuit.append('CX', [STEANE_3_ID, STEANE_6_ID])
+    stim_circuit.append('CX', [STEANE_1_ID, STEANE_4_ID])
+    stim_circuit.append('CX', [STEANE_2_ID, STEANE_0_ID])
+    stim_circuit.append('CX', [STEANE_3_ID, STEANE_5_ID])
+
+
+def perform_perfect_steane_zero_initialization(stim_circuit: stim.Circuit, mapping: QubitMapping) -> None:
+    STEANE_0_ID = mapping.get_id(*STEANE_0)
+    STEANE_1_ID = mapping.get_id(*STEANE_1)
+    STEANE_2_ID = mapping.get_id(*STEANE_2)
+    STEANE_3_ID = mapping.get_id(*STEANE_3)
+    STEANE_4_ID = mapping.get_id(*STEANE_4)
+    STEANE_5_ID = mapping.get_id(*STEANE_5)
+    STEANE_6_ID = mapping.get_id(*STEANE_6)
+
+    stim_circuit.append('R', STEANE_0_ID)
+    stim_circuit.append('RX', STEANE_1_ID)
+    stim_circuit.append('RX', STEANE_2_ID)
+    stim_circuit.append('RX', STEANE_3_ID)
+    stim_circuit.append('R', STEANE_4_ID)
+    stim_circuit.append('R', STEANE_5_ID)
+    stim_circuit.append('R', STEANE_6_ID)
+
+    stim_circuit.append('CX', [STEANE_0_ID, STEANE_5_ID])
+    stim_circuit.append('CX', [STEANE_0_ID, STEANE_6_ID])
+    stim_circuit.append('CX', [STEANE_1_ID, STEANE_0_ID])
+    stim_circuit.append('CX', [STEANE_3_ID, STEANE_4_ID])
+    stim_circuit.append('CX', [STEANE_2_ID, STEANE_6_ID])
+    stim_circuit.append('CX', [STEANE_1_ID, STEANE_5_ID])
+    stim_circuit.append('CX', [STEANE_2_ID, STEANE_4_ID])
+    stim_circuit.append('CX', [STEANE_3_ID, STEANE_6_ID])
+    stim_circuit.append('CX', [STEANE_1_ID, STEANE_4_ID])
+    stim_circuit.append('CX', [STEANE_2_ID, STEANE_0_ID])
+    stim_circuit.append('CX', [STEANE_3_ID, STEANE_5_ID])
+
+
+def perform_perfect_steane_s_plus_initialization(stim_circuit: stim.Circuit, mapping: QubitMapping) -> None:
+    perform_perfect_steane_plus_initialization(stim_circuit, mapping)
+
+    stim_circuit.append('S', mapping.get_id(*STEANE_0))
+    stim_circuit.append('S', mapping.get_id(*STEANE_1))
+    stim_circuit.append('S', mapping.get_id(*STEANE_2))
+    stim_circuit.append('S', mapping.get_id(*STEANE_3))
+    stim_circuit.append('S', mapping.get_id(*STEANE_4))
+    stim_circuit.append('S', mapping.get_id(*STEANE_5))
+    stim_circuit.append('S', mapping.get_id(*STEANE_6))

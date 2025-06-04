@@ -1276,3 +1276,56 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertEqual(circuit.detectors_for_post_selection, [
             DetectorIdentifier(0), DetectorIdentifier(1), DetectorIdentifier(2)
         ])
+
+
+class SteaneInitializationTest(unittest.TestCase):
+    def test_plus(self) -> None:
+        mapping = QubitMapping(20, 20)
+        stim_circuit = stim.Circuit()
+
+        perform_perfect_steane_plus_initialization(stim_circuit, mapping)
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_0)])
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_1)])
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_2)])
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_3)])
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_4)])
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_5)])
+        stim_circuit.append('MX', [mapping.get_id(*STEANE_6)])
+        stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
+
+        # Asserting that the detector event is deterministic.
+        stim_circuit.detector_error_model()
+
+    def test_zero(self) -> None:
+        mapping = QubitMapping(20, 20)
+        stim_circuit = stim.Circuit()
+
+        perform_perfect_steane_zero_initialization(stim_circuit, mapping)
+        stim_circuit.append('M', [mapping.get_id(*STEANE_0)])
+        stim_circuit.append('M', [mapping.get_id(*STEANE_1)])
+        stim_circuit.append('M', [mapping.get_id(*STEANE_2)])
+        stim_circuit.append('M', [mapping.get_id(*STEANE_3)])
+        stim_circuit.append('M', [mapping.get_id(*STEANE_4)])
+        stim_circuit.append('M', [mapping.get_id(*STEANE_5)])
+        stim_circuit.append('M', [mapping.get_id(*STEANE_6)])
+        stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
+
+        # Asserting that the detector event is deterministic.
+        stim_circuit.detector_error_model()
+
+    def test_s_plus(self) -> None:
+        mapping = QubitMapping(20, 20)
+        stim_circuit = stim.Circuit()
+
+        perform_perfect_steane_s_plus_initialization(stim_circuit, mapping)
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_0)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_1)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_2)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_3)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_4)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_5)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_6)])
+        stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
+
+        # Asserting that the detector event is deterministic.
+        stim_circuit.detector_error_model()
