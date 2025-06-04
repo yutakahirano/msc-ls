@@ -502,7 +502,7 @@ def perform_simulation(
         # Because we *know* that the trivial syndrome is least likely to have logical errors,
         # we increase the gap manually.
         if all(syndrome[mask] == 0):
-            gap += 0.0
+            gap += 10.0
 
         for rs in results:
             rs.append(gap, expected)
