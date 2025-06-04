@@ -351,6 +351,7 @@ class SteanePlusSurfaceCode:
                     m = SurfaceXSyndromeMeasurement(
                         self.circuit, (x + 1, y - 1), SurfaceStabilizerPattern.TWO_WEIGHT_DOWN, False)
                     self.surface_syndrome_measurements[(x + 1, y - 1)] = m
+                    m.set_post_selection(self.full_post_selection)
 
         for i in range(depth_for_surface_code_syndrome_measurement):
             for m in self.surface_syndrome_measurements.values():
@@ -546,6 +547,10 @@ def perform_simulation(
     results = [SimulationResults(lower, upper) for (lower, upper) in gap_filters]
     postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
 
+    mask = np.ones_like(detection_events[0], dtype=bool)
+    mask[x_detector_for_complementary_gap.id] = False
+    mask[z_detector_for_complementary_gap.id] = False
+
     for shot in range(num_shots):
         syndrome = detection_events[shot]
         if np.any(syndrome[postselection_ids] != 0):
@@ -584,8 +589,15 @@ def perform_simulation(
         actual = observable_flips[shot]
         expected = np.array_equal(actual, prediction)
         gap = max_weight - min_weight
+
+        # Because we *know* that the trivial syndrome is least likely to have logical errors,
+        # we increase the gap manually.
+        if all(syndrome[mask] == 0):
+            gap += 0.0
+
         for rs in results:
             rs.append(gap, expected)
+
     return results
 
 
