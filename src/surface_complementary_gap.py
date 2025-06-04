@@ -324,6 +324,10 @@ def perform_simulation(
     results = [SimulationResults(lower, upper) for (lower, upper) in gap_filters]
     postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
 
+    mask = np.ones_like(detection_events[0], dtype=bool)
+    mask[x_detector_for_complementary_gap.id] = False
+    mask[z_detector_for_complementary_gap.id] = False
+
     for shot in range(num_shots):
         syndrome = detection_events[shot]
         if np.any(syndrome[postselection_ids] != 0):
@@ -362,6 +366,12 @@ def perform_simulation(
         actual = observable_flips[shot]
         expected = np.array_equal(actual, prediction)
         gap = max_weight - min_weight
+
+        # Because we *know* that the trivial syndrome is least likely to have logical errors,
+        # we increase the gap manually.
+        if all(syndrome[mask] == 0):
+            gap += 10.0
+
         for rs in results:
             rs.append(gap, expected)
     return results
