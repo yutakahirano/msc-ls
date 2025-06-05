@@ -89,9 +89,6 @@ class Circuit:
             self.circuit.append('QUBIT_COORDS', id, (x, y))
         self.noiseless_qubits: list[int] = []
         self.tainted_qubits: list[int] = []
-        self.num_z0246_syndrome_measurements = 0
-        self.num_z0235_syndrome_measurements = 0
-        self.num_z0145_syndrome_measurements = 0
         self.measurements: dict[int, int] = {}
         self.detectors_for_post_selection: list[DetectorIdentifier] = []
 
