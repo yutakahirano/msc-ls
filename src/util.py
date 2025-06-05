@@ -89,7 +89,6 @@ class Circuit:
             self.circuit.append('QUBIT_COORDS', id, (x, y))
         self.noiseless_qubits: list[int] = []
         self.tainted_qubits: list[int] = []
-        self.measurements: dict[int, int] = {}
         self.detectors_for_post_selection: list[DetectorIdentifier] = []
 
     def place_tick(self) -> None:
@@ -184,7 +183,6 @@ class Circuit:
         if target not in self.noiseless_qubits and self.error_probability > 0:
             self.circuit.append('X_ERROR', target, self.error_probability)
 
-        m: int | None = self.measurements[target] if target in self.measurements else None
         self.circuit.append('M', target)
         self.tainted_qubits.append(target)
         return MeasurementIdentifier(self.circuit.num_measurements - 1)
