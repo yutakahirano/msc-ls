@@ -1348,20 +1348,36 @@ class SteaneInitializationTest(unittest.TestCase):
         # Asserting that the detector event is deterministic.
         stim_circuit.detector_error_model()
 
+    def test_syndrome_extraction_after_injection(self) -> None:
+        mapping = QubitMapping(20, 20)
+        circuit = Circuit(mapping, 0)
+        stim_circuit = circuit.circuit
+
+        perform_injection(circuit)
+        circuit.place_tick()
+        perform_syndrome_extraction_after_injection(circuit)
+        circuit.place_tick()
+
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_0_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_1_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_2_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_3_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_4_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_5_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_6_CHECK)])
+        stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
+
+        # Asserting that the detector event is deterministic.
+        stim_circuit.detector_error_model()
+
     def test_check(self) -> None:
         mapping = QubitMapping(20, 20)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
 
         perform_injection(circuit)
-
-        self.assertEqual(STEANE_0_INJECTION, STEANE_0_CHECK)
-        self.assertEqual(STEANE_2_INJECTION, STEANE_2_CHECK)
-        self.assertEqual(STEANE_3_INJECTION, STEANE_3_CHECK)
-        self.assertEqual(STEANE_4_INJECTION, STEANE_4_CHECK)
-        self.assertEqual(STEANE_5_INJECTION, STEANE_5_CHECK)
-        self.assertEqual(STEANE_6_INJECTION, STEANE_6_CHECK)
-        stim_circuit.append('SWAP', [mapping.get_id(*STEANE_1_INJECTION), mapping.get_id(*STEANE_1_CHECK)])
+        circuit.place_tick()
+        perform_syndrome_extraction_after_injection(circuit)
 
         circuit.place_tick()
         perform_check(circuit)

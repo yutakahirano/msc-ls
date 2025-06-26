@@ -601,6 +601,84 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
             break
 
 
+def syndrome_extraction_after_injection_generator(
+        circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
+    circuit.place_reset_x((3, 1))
+    circuit.place_reset_z((4, 2))
+    circuit.place_reset_x((4, 4))
+    circuit.place_reset_z((5, 5))
+    circuit.place_reset_x((1, 3))
+    circuit.place_reset_z((2, 4))
+    circuit.place_reset_z((1, 5))
+    yield
+
+    circuit.place_cx((3, 1), (4, 2))
+    circuit.place_cx((4, 4), (5, 5))
+    circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((0, 4), (1, 5))
+    yield
+
+    circuit.place_cx((3, 1), (2, 0))
+    circuit.place_cx((4, 2), (5, 3))
+    circuit.place_cx((4, 4), (3, 3))
+    circuit.place_cx((2, 4), (3, 5))
+    circuit.place_cx((1, 5), (0, 4))
+    yield
+
+    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((4, 2), (3, 3))
+    circuit.place_cx((4, 4), (3, 5))
+    circuit.place_cx((2, 4), (1, 5))
+    yield
+
+    circuit.place_cx((1, 3), (2, 2))
+    circuit.place_cx((2, 4), (3, 3))
+    circuit.place_cx((4, 4), (5, 3))
+    circuit.place_cx((5, 5), (6, 4))
+    yield
+
+    circuit.place_cx((2, 2), (1, 3))
+    circuit.place_cx((3, 3), (2, 4))
+    circuit.place_cx((5, 3), (4, 4))
+    circuit.place_cx((6, 4), (5, 5))
+    yield
+
+    circuit.place_cx((2, 0), (3, 1))
+    circuit.place_cx((5, 3), (4, 2))
+    circuit.place_cx((3, 3), (4, 4))
+    circuit.place_cx((3, 5), (2, 4))
+    yield
+
+    circuit.place_cx((2, 2), (3, 1))
+    circuit.place_cx((3, 3), (4, 2))
+    circuit.place_cx((3, 5), (4, 4))
+    circuit.place_cx((1, 5), (2, 4))
+    yield
+
+    circuit.place_cx((3, 1), (4, 2))
+    circuit.place_cx((4, 4), (5, 5))
+    circuit.place_cx((1, 3), (2, 4))
+    yield
+
+    circuit.place_detector([circuit.place_measurement_x((3, 1))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((4, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((5, 5))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((1, 3))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((2, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((0, 4))], post_selection=True)
+
+
+def perform_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
+    g = syndrome_extraction_after_injection_generator(circuit)
+    while True:
+        try:
+            next(g)
+            circuit.place_tick()
+        except StopIteration:
+            break
+
+
 def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     circuit.place_reset_x((3, 1))
     circuit.place_reset_x((4, 2))

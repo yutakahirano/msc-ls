@@ -170,9 +170,8 @@ def main() -> None:
 
     steane_code.perform_injection(circuit)
     circuit.place_tick()
-    circuit.circuit.append('SWAP', [
-        mapping.get_id(*steane_code.STEANE_1_INJECTION), mapping.get_id(*steane_code.STEANE_1_CHECK)
-    ])
+    steane_code.perform_syndrome_extraction_after_injection(circuit)
+    circuit.place_tick()
 
     steane_code.perform_check(circuit)
     with SuppressNoise(circuit):
