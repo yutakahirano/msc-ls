@@ -165,7 +165,7 @@ def main() -> None:
 
     assert final_distance >= intermediate_surface_distance
 
-    mapping = QubitMapping(30, 30)
+    mapping = QubitMapping(7, 7)
     circuit = Circuit(mapping, error_probability)
 
     steane_code.perform_injection(circuit)

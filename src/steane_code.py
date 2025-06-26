@@ -522,44 +522,46 @@ def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[Non
     # TICK 2
     circuit.place_cx((5, 3), (4, 4))
     circuit.place_cx((3, 3), (2, 4))
+    circuit.place_reset_x((1, 3))
     yield
 
     # TICK 3
     circuit.place_cx((3, 3), (4, 2))
     circuit.place_cx((3, 5), (4, 4))
+    circuit.place_cx((1, 3), (2, 4))
 
     circuit.place_reset_x((3, 1))
     circuit.place_reset_x((5, 5))
-    circuit.place_reset_x((1, 3))
+    circuit.place_reset_x((2, 2))
     yield
 
     # TICK 4
     circuit.place_cx((3, 1), (4, 2))
     circuit.place_cx((5, 5), (4, 4))
-    circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((2, 2), (1, 3))
     yield
 
     # TICK 5
-    circuit.place_cx((4, 2), (3, 1))
+    circuit.place_cx((2, 2), (3, 1))
     circuit.place_cx((4, 4), (5, 5))
     circuit.place_cx((2, 4), (1, 3))
 
-    circuit.place_reset_x((2, 2))
     circuit.place_reset_x((6, 4))
     yield
 
     # TICK 6
-    circuit.place_cx((2, 2), (1, 3))
     circuit.place_cx((6, 4), (5, 5))
+    circuit.place_cx((4, 2), (3, 1))
+    circuit.place_cx((1, 3), (2, 2))
     yield
 
     # TICK 7
-    circuit.place_cx((2, 2), (3, 1))
     circuit.place_cx((5, 5), (6, 4))
+    circuit.place_cx((3, 1), (2, 2))
     yield
 
     # TICK 8
-    circuit.place_cx((1, 3), (2, 2))
+    circuit.place_single_qubit_gate('S_DAG', (2, 2))
     yield
 
     # TICK 9
@@ -567,26 +569,18 @@ def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[Non
     yield
 
     # TICK 10
-    circuit.place_single_qubit_gate('S_DAG', (2, 2))
-    yield
-
-    # TICK 11
-    circuit.place_cx((3, 1), (2, 2))
-    yield
-
-    # TICK 12
     circuit.place_cx((1, 3), (2, 2))
 
     circuit.place_reset_x((2, 0))
     circuit.place_reset_x((0, 4))
     yield
 
-    # TICK 13
+    # TICK 11
     circuit.place_cx((2, 0), (3, 1))
     circuit.place_cx((0, 4), (1, 3))
     yield
 
-    # TICK 14
+    # TICK 12
     circuit.place_cx((3, 1), (2, 0))
     circuit.place_cx((1, 3), (0, 4))
 
