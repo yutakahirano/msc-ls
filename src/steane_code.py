@@ -742,13 +742,13 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_cx((2, 4), (1, 5))
     yield
 
-    circuit.place_single_qubit_gate('S_DAG', STEANE_0_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_1_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_2_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_3_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_4_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_5_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_6_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_0_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_1_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_2_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_3_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_4_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_5_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_6_CHECK)
 
     for pos in [(3, 1), (4, 2), (1, 1), (4, 4), (5, 5), (2, 4)]:
         m = circuit.place_measurement_x(pos)
