@@ -233,10 +233,15 @@ class Circuit:
             self.detectors_for_post_selection.append(id)
         return id
 
-    def place_observable_include(self, measurements: list[MeasurementIdentifier], id: ObservableIdentifier) -> None:
+    def place_observable_include(
+            self,
+            measurements: list[MeasurementIdentifier],
+            id: ObservableIdentifier | None = None) -> ObservableIdentifier:
         '''Adds measurement records to a specified logical observable.'''
+        id = id or ObservableIdentifier(self.circuit.num_observables)
         targets = [m.target_rec(self) for m in measurements]
         self.circuit.append('OBSERVABLE_INCLUDE', targets, id.id)
+        return id
 
 
 class MultiplexingCircuit:
@@ -303,9 +308,14 @@ class MultiplexingCircuit:
         assert d1 == d2
         return d1
 
-    def place_observable_include(self, measurements: list[MeasurementIdentifier], id: ObservableIdentifier) -> None:
-        self.circuit1.place_observable_include(measurements, id)
-        self.circuit2.place_observable_include(measurements, id)
+    def place_observable_include(
+            self,
+            measurements: list[MeasurementIdentifier],
+            id: ObservableIdentifier | None = None) -> ObservableIdentifier:
+        i = self.circuit1.place_observable_include(measurements, id)
+        j = self.circuit2.place_observable_include(measurements, id)
+        assert i == j
+        return i
 
 
 class SuppressNoise:

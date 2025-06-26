@@ -1,5 +1,7 @@
 import stim
 
+from collections.abc import Generator
+from typing import Literal
 from util import Circuit, MultiplexingCircuit, QubitMapping
 
 
@@ -500,7 +502,7 @@ def perform_perfect_steane_s_plus_initialization(stim_circuit: stim.Circuit, map
     stim_circuit.append('S', mapping.get_id(*STEANE_6))
 
 
-def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
+def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     # Reset qubits 0, 2, 5 and their peers.
     # TICK 0
     circuit.place_reset_x((5, 3))
@@ -509,18 +511,18 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
     circuit.place_reset_z((4, 2))
     circuit.place_reset_z((4, 4))
     circuit.place_reset_z((2, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 1
     circuit.place_cx((5, 3), (4, 2))
     circuit.place_cx((3, 3), (4, 4))
     circuit.place_cx((3, 5), (2, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 2
     circuit.place_cx((5, 3), (4, 4))
     circuit.place_cx((3, 3), (2, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 3
     circuit.place_cx((3, 3), (4, 2))
@@ -529,13 +531,13 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
     circuit.place_reset_x((3, 1))
     circuit.place_reset_x((5, 5))
     circuit.place_reset_x((1, 3))
-    circuit.place_tick()
+    yield
 
     # TICK 4
     circuit.place_cx((3, 1), (4, 2))
     circuit.place_cx((5, 5), (4, 4))
     circuit.place_cx((1, 3), (2, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 5
     circuit.place_cx((4, 2), (3, 1))
@@ -544,52 +546,62 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
 
     circuit.place_reset_x((2, 2))
     circuit.place_reset_x((6, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 6
     circuit.place_cx((2, 2), (1, 3))
     circuit.place_cx((6, 4), (5, 5))
-    circuit.place_tick()
+    yield
 
     # TICK 7
     circuit.place_cx((2, 2), (3, 1))
     circuit.place_cx((5, 5), (6, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 8
     circuit.place_cx((1, 3), (2, 2))
-    circuit.place_tick()
+    yield
 
     # TICK 9
     circuit.place_cx((3, 1), (2, 2))
-    circuit.place_tick()
+    yield
 
     # TICK 10
     circuit.place_single_qubit_gate('S_DAG', (2, 2))
-    circuit.place_tick()
+    yield
 
     # TICK 11
     circuit.place_cx((3, 1), (2, 2))
-    circuit.place_tick()
+    yield
 
     # TICK 12
     circuit.place_cx((1, 3), (2, 2))
 
     circuit.place_reset_x((2, 0))
     circuit.place_reset_x((0, 4))
-    circuit.place_tick()
+    yield
 
     # TICK 13
     circuit.place_cx((2, 0), (3, 1))
     circuit.place_cx((0, 4), (1, 3))
-    circuit.place_tick()
+    yield
 
     # TICK 14
     circuit.place_cx((3, 1), (2, 0))
     circuit.place_cx((1, 3), (0, 4))
 
 
-def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
+def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
+    g = injection_generator(circuit)
+    while True:
+        try:
+            next(g)
+            circuit.place_tick()
+        except StopIteration:
+            break
+
+
+def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     circuit.place_reset_x((3, 1))
     circuit.place_reset_x((4, 2))
     circuit.place_reset_x((1, 1))
@@ -603,7 +615,7 @@ def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
     circuit.place_single_qubit_gate('S_DAG', STEANE_4_CHECK)
     circuit.place_single_qubit_gate('S_DAG', STEANE_5_CHECK)
     circuit.place_single_qubit_gate('S_DAG', STEANE_6_CHECK)
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((1, 1), (2, 0))
     circuit.place_cx((3, 1), (2, 2))
@@ -611,38 +623,38 @@ def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
     circuit.place_cx((4, 4), (5, 3))
     circuit.place_cx((5, 5), (6, 4))
     circuit.place_cx((2, 4), (1, 5))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((2, 2), (1, 1))
     circuit.place_cx((3, 3), (2, 4))
     circuit.place_cx((4, 4), (5, 5))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((3, 3), (2, 2))
     circuit.place_cx((4, 4), (3, 5))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((3, 3), (4, 4))
-    circuit.place_tick()
+    yield
 
     m = circuit.place_measurement_x((3, 3))
     circuit.place_detector([m], post_selection=True)
-    circuit.place_tick()
+    yield
 
     circuit.place_reset_x((3, 3))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((3, 3), (4, 4))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((3, 3), (2, 2))
     circuit.place_cx((4, 4), (3, 5))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((2, 2), (1, 1))
     circuit.place_cx((3, 3), (2, 4))
     circuit.place_cx((4, 4), (5, 5))
-    circuit.place_tick()
+    yield
 
     circuit.place_cx((1, 1), (2, 0))
     circuit.place_cx((3, 1), (2, 2))
@@ -650,7 +662,7 @@ def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
     circuit.place_cx((4, 4), (5, 3))
     circuit.place_cx((5, 5), (6, 4))
     circuit.place_cx((2, 4), (1, 5))
-    circuit.place_tick()
+    yield
 
     circuit.place_single_qubit_gate('S_DAG', STEANE_0_CHECK)
     circuit.place_single_qubit_gate('S_DAG', STEANE_1_CHECK)
@@ -663,3 +675,39 @@ def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
     for pos in [(3, 1), (4, 2), (1, 1), (4, 4), (5, 5), (2, 4)]:
         m = circuit.place_measurement_x(pos)
         circuit.place_detector([m], post_selection=True)
+
+
+def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
+    g = check_generator(circuit)
+    while True:
+        try:
+            next(g)
+            circuit.place_tick()
+        except StopIteration:
+            break
+
+
+def perform_tomography_after_check_stage(circuit: Circuit | MultiplexingCircuit) -> None:
+    mapping = circuit.mapping
+
+    def pauli_string(
+            axis: Literal['X'] | Literal['Y'] | Literal['Z'], positions: list[tuple[int, int]]) -> stim.PauliString:
+        return stim.PauliString('*'.join('{}{}'.format(axis, mapping.get_id(*pos)) for pos in positions))
+
+    stabilizer_positions = [
+        [STEANE_0_CHECK, STEANE_1_CHECK, STEANE_4_CHECK, STEANE_5_CHECK],
+        [STEANE_0_CHECK, STEANE_2_CHECK, STEANE_3_CHECK, STEANE_5_CHECK],
+        [STEANE_0_CHECK, STEANE_2_CHECK, STEANE_4_CHECK, STEANE_6_CHECK]
+    ]
+
+    for positions in stabilizer_positions:
+        m = circuit.place_mpp(pauli_string('X', positions))
+        circuit.place_detector([m], post_selection=True)
+        circuit.place_tick()
+
+        m = circuit.place_mpp(pauli_string('Z', positions))
+        circuit.place_detector([m], post_selection=True)
+        circuit.place_tick()
+
+    m = circuit.place_mpp(pauli_string('Y', [STEANE_1_CHECK, STEANE_3_CHECK, STEANE_5_CHECK]))
+    circuit.place_observable_include([m])
