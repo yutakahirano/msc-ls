@@ -8,9 +8,9 @@ from util import Circuit, MultiplexingCircuit, QubitMapping
 # These coordinates are hardcoded.
 STEANE_0 = (3, 3)
 STEANE_1 = (1, 5)
-STEANE_2 = (4, 2)
+STEANE_2 = (6, 2)
 STEANE_3 = (5, 5)
-STEANE_4 = (0, 2)
+STEANE_4 = (2, 2)
 STEANE_5 = (3, 5)
 STEANE_6 = (2, 0)
 
@@ -22,15 +22,6 @@ STEANE_3_INJECTION = (5, 5)
 STEANE_4_INJECTION = (2, 2)
 STEANE_5_INJECTION = (3, 5)
 STEANE_6_INJECTION = (2, 0)
-
-# Qubit coordinates before and after the check stage.
-STEANE_0_CHECK = (3, 3)
-STEANE_1_CHECK = (1, 5)
-STEANE_2_CHECK = (6, 2)
-STEANE_3_CHECK = (5, 5)
-STEANE_4_CHECK = (2, 2)
-STEANE_5_CHECK = (3, 5)
-STEANE_6_CHECK = (2, 0)
 
 
 class SteaneZ0145SyndromeMeasurement:
@@ -352,9 +343,9 @@ class SteaneZ0246SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        ancilla_a = (2, 2)
+        ancilla_a = (4, 2)
         ancilla_b = (3, 1)
-        ancilla_c = (1, 1)
+        ancilla_c = (5, 1)
 
         if not self.has_initialized_ancillae:
             if circuit.is_tainted_by_position(*ancilla_a) or circuit.is_tainted_by_position(*ancilla_b) or\
@@ -379,20 +370,16 @@ class SteaneZ0246SyndromeMeasurement:
                 if self._perform_cx(STEANE_0, ancilla_a):
                     self.has_performed_cx_0 = True
                     has_progress = True
-            if not self.has_performed_cx_4 and self.has_entangled_ancillae_ac:
-                if self._perform_cx(STEANE_4, ancilla_c):
+            if not self.has_performed_cx_4 and self.has_entangled_ancillae_ab:
+                if self._perform_cx(STEANE_4, ancilla_b):
                     self.has_performed_cx_4 = True
                     has_progress = True
-            if not self.has_performed_cx_2 and self.has_entangled_ancillae_ab:
-                if self._perform_cx(STEANE_2, ancilla_b):
+            if not self.has_performed_cx_2 and self.has_entangled_ancillae_ac:
+                if self._perform_cx(STEANE_2, ancilla_c):
                     self.has_performed_cx_2 = True
                     has_progress = True
             if not self.has_performed_cx_6 and self.has_entangled_ancillae_ab:
                 if self._perform_cx(STEANE_6, ancilla_b):
-                    self.has_performed_cx_6 = True
-                    has_progress = True
-            if not self.has_performed_cx_6 and self.has_entangled_ancillae_ac:
-                if self._perform_cx(STEANE_6, ancilla_c):
                     self.has_performed_cx_6 = True
                     has_progress = True
             if not has_progress:
@@ -722,13 +709,13 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_reset_x((4, 4))
     circuit.place_reset_x((1, 3))
     circuit.place_reset_x((2, 4))
-    circuit.place_single_qubit_gate('S_DAG', STEANE_0_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_1_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_2_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_3_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_4_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_5_CHECK)
-    circuit.place_single_qubit_gate('S_DAG', STEANE_6_CHECK)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_0)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_1)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_2)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_3)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_4)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_5)
+    circuit.place_single_qubit_gate('S_DAG', STEANE_6)
     yield
 
     circuit.place_cx((3, 1), (2, 0))
@@ -778,13 +765,13 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_cx((2, 4), (1, 5))
     yield
 
-    circuit.place_single_qubit_gate('S', STEANE_0_CHECK)
-    circuit.place_single_qubit_gate('S', STEANE_1_CHECK)
-    circuit.place_single_qubit_gate('S', STEANE_2_CHECK)
-    circuit.place_single_qubit_gate('S', STEANE_3_CHECK)
-    circuit.place_single_qubit_gate('S', STEANE_4_CHECK)
-    circuit.place_single_qubit_gate('S', STEANE_5_CHECK)
-    circuit.place_single_qubit_gate('S', STEANE_6_CHECK)
+    circuit.place_single_qubit_gate('S', STEANE_0)
+    circuit.place_single_qubit_gate('S', STEANE_1)
+    circuit.place_single_qubit_gate('S', STEANE_2)
+    circuit.place_single_qubit_gate('S', STEANE_3)
+    circuit.place_single_qubit_gate('S', STEANE_4)
+    circuit.place_single_qubit_gate('S', STEANE_5)
+    circuit.place_single_qubit_gate('S', STEANE_6)
 
     for pos in [(3, 1), (4, 2), (5, 3), (4, 4), (1, 3), (2, 4)]:
         m = circuit.place_measurement_x(pos)
@@ -810,9 +797,9 @@ def perform_tomography_after_check_stage(circuit: Circuit | MultiplexingCircuit)
         return stim.PauliString('*'.join('{}{}'.format(axis, mapping.get_id(*pos)) for pos in positions))
 
     stabilizer_positions = [
-        [STEANE_0_CHECK, STEANE_1_CHECK, STEANE_4_CHECK, STEANE_5_CHECK],
-        [STEANE_0_CHECK, STEANE_2_CHECK, STEANE_3_CHECK, STEANE_5_CHECK],
-        [STEANE_0_CHECK, STEANE_2_CHECK, STEANE_4_CHECK, STEANE_6_CHECK]
+        [STEANE_0, STEANE_1, STEANE_4, STEANE_5],
+        [STEANE_0, STEANE_2, STEANE_3, STEANE_5],
+        [STEANE_0, STEANE_2, STEANE_4, STEANE_6]
     ]
 
     for positions in stabilizer_positions:
@@ -824,5 +811,5 @@ def perform_tomography_after_check_stage(circuit: Circuit | MultiplexingCircuit)
         circuit.place_detector([m], post_selection=True)
         circuit.place_tick()
 
-    m = circuit.place_mpp(pauli_string('Y', [STEANE_1_CHECK, STEANE_3_CHECK, STEANE_5_CHECK]))
+    m = circuit.place_mpp(pauli_string('Y', [STEANE_1, STEANE_3, STEANE_5]))
     circuit.place_observable_include([m])

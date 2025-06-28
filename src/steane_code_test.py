@@ -9,14 +9,10 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
     def test_run(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_1
-        self.assertEqual(mapping.get_id(1, 5), 102)
-        # STEANE_4
-        self.assertEqual(mapping.get_id(0, 2), 1)
-        # STEANE_5
-        self.assertEqual(mapping.get_id(3, 5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_1), 102)
+        self.assertEqual(mapping.get_id(*STEANE_4), 11)
+        self.assertEqual(mapping.get_id(*STEANE_5), 112)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -91,7 +87,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 102 12 1 101''')
+        CX 102 12 11 101''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -118,7 +114,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 102 12 1 101
+        CX 102 12 11 101
         TICK
         CX 112 12''')
         self.assertEqual(str(circuit.circuit), expectation)
@@ -147,7 +143,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 102 12 1 101
+        CX 102 12 11 101
         TICK
         CX 112 12
         TICK
@@ -178,7 +174,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 102 12 1 101
+        CX 102 12 11 101
         TICK
         CX 112 12
         TICK
@@ -211,7 +207,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 102 12 1 101
+        CX 102 12 11 101
         TICK
         CX 112 12
         TICK
@@ -229,14 +225,10 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
     def test_lock_1(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_1
-        self.assertEqual(mapping.get_id(1, 5), 102)
-        # STEANE_4
-        self.assertEqual(mapping.get_id(0, 2), 1)
-        # STEANE_5
-        self.assertEqual(mapping.get_id(3, 5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_1), 102)
+        self.assertEqual(mapping.get_id(*STEANE_4), 11)
+        self.assertEqual(mapping.get_id(*STEANE_5), 112)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -359,7 +351,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 1 101 112 12
+        CX 11 101 112 12
         TICK
         CX 111 12
         TICK
@@ -370,14 +362,10 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
     def test_lock_5(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_1
-        self.assertEqual(mapping.get_id(1, 5), 102)
-        # STEANE_4
-        self.assertEqual(mapping.get_id(0, 2), 1)
-        # STEANE_5
-        self.assertEqual(mapping.get_id(3, 5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_1), 102)
+        self.assertEqual(mapping.get_id(*STEANE_4), 11)
+        self.assertEqual(mapping.get_id(*STEANE_5), 112)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -500,7 +488,7 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 101 12
         TICK
-        CX 102 12 1 101
+        CX 102 12 11 101
         TICK
         CX 111 12
         TICK
@@ -513,14 +501,10 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
     def test_run(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_2
-        self.assertEqual(mapping.get_id(4, 2), 21)
-        # STEANE_3
-        self.assertEqual(mapping.get_id(5, 5), 122)
-        # STEANE_5
-        self.assertEqual(mapping.get_id(3, 5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_2), 31)
+        self.assertEqual(mapping.get_id(*STEANE_3), 122)
+        self.assertEqual(mapping.get_id(*STEANE_5), 112)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -601,7 +585,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 112 22 21 121''')
+        CX 112 22 31 121''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -628,7 +612,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 112 22 21 121
+        CX 112 22 31 121
         TICK
         CX 122 22''')
         self.assertEqual(str(circuit.circuit), expectation)
@@ -657,7 +641,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 112 22 21 121
+        CX 112 22 31 121
         TICK
         CX 122 22
         TICK
@@ -688,7 +672,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 112 22 21 121
+        CX 112 22 31 121
         TICK
         CX 122 22
         TICK
@@ -721,7 +705,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 112 22 21 121
+        CX 112 22 31 121
         TICK
         CX 122 22
         TICK
@@ -739,14 +723,10 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
     def test_lock_qubit_3(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_2
-        self.assertEqual(mapping.get_id(4, 2), 21)
-        # STEANE_3
-        self.assertEqual(mapping.get_id(5, 5), 122)
-        # STEANE_5
-        self.assertEqual(mapping.get_id(3, 5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_2), 31)
+        self.assertEqual(mapping.get_id(*STEANE_3), 122)
+        self.assertEqual(mapping.get_id(*STEANE_5), 112)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -874,7 +854,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 112 22 21 121
+        CX 112 22 31 121
         TICK
         CX 111 22
         TICK
@@ -885,14 +865,10 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
     def test_lock_qubit_5(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_2
-        self.assertEqual(mapping.get_id(4, 2), 21)
-        # STEANE_3
-        self.assertEqual(mapping.get_id(5, 5), 122)
-        # STEANE_5
-        self.assertEqual(mapping.get_id(3, 5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_2), 31)
+        self.assertEqual(mapping.get_id(*STEANE_3), 122)
+        self.assertEqual(mapping.get_id(*STEANE_5), 112)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -1020,7 +996,7 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         TICK
         CX 121 22
         TICK
-        CX 122 22 21 121
+        CX 122 22 31 121
         TICK
         CX 111 22
         TICK
@@ -1033,14 +1009,10 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
     def test_run(self) -> None:
         mapping = QubitMapping(20, 20)
 
-        # STEANE_0
-        self.assertEqual(mapping.get_id(3, 3), 111)
-        # STEANE_2
-        self.assertEqual(mapping.get_id(4, 2), 21)
-        # STEANE_4
-        self.assertEqual(mapping.get_id(0, 2), 1)
-        # STEANE_6
-        self.assertEqual(mapping.get_id(2, 0), 10)
+        self.assertEqual(mapping.get_id(*STEANE_0), 111)
+        self.assertEqual(mapping.get_id(*STEANE_2), 31)
+        self.assertEqual(mapping.get_id(*STEANE_4), 11)
+        self.assertEqual(mapping.get_id(*STEANE_6), 10)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -1066,15 +1038,15 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertFalse(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100''')
+        R 21
+        RX 110 120''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         b = m.run()
         self.assertFalse(b)
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100''')
+        R 21
+        RX 110 120''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1098,10 +1070,10 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertFalse(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100
+        R 21
+        RX 110 120
         TICK
-        CX 110 11''')
+        CX 110 21''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1111,26 +1083,26 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.has_entangled_ancillae_ab)
         self.assertTrue(m.has_entangled_ancillae_ac)
         self.assertFalse(m.has_performed_cx_0)
-        self.assertTrue(m.has_performed_cx_2)
-        self.assertFalse(m.has_performed_cx_4)
+        self.assertFalse(m.has_performed_cx_2)
+        self.assertTrue(m.has_performed_cx_4)
         self.assertFalse(m.has_performed_cx_6)
         self.assertFalse(m.has_disentangled_ancillae_ab)
         self.assertFalse(m.has_disentangled_ancillae_ac)
         self.assertFalse(m.has_measured_ancillae)
         self.assertFalse(m.is_done_with_qubit_0())
         self.assertTrue(m.is_done_with_qubit_1())
-        self.assertTrue(m.is_done_with_qubit_2())
+        self.assertFalse(m.is_done_with_qubit_2())
         self.assertTrue(m.is_done_with_qubit_3())
-        self.assertFalse(m.is_done_with_qubit_4())
+        self.assertTrue(m.is_done_with_qubit_4())
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertFalse(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100
+        R 21
+        RX 110 120
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11 21 110''')
+        CX 120 21 11 110''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1154,14 +1126,14 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100
+        R 21
+        RX 110 120
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11 21 110
+        CX 120 21 11 110
         TICK
-        CX 111 11 1 100 10 110''')
+        CX 111 21 31 120 10 110''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1185,16 +1157,16 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100
+        R 21
+        RX 110 120
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11 21 110
+        CX 120 21 11 110
         TICK
-        CX 111 11 1 100 10 110
+        CX 111 21 31 120 10 110
         TICK
-        CX 110 11''')
+        CX 110 21''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1218,18 +1190,18 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100
+        R 21
+        RX 110 120
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11 21 110
+        CX 120 21 11 110
         TICK
-        CX 111 11 1 100 10 110
+        CX 111 21 31 120 10 110
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11''')
+        CX 120 21''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1253,24 +1225,24 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 11
-        RX 110 100
+        R 21
+        RX 110 120
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11 21 110
+        CX 120 21 11 110
         TICK
-        CX 111 11 1 100 10 110
+        CX 111 21 31 120 10 110
         TICK
-        CX 110 11
+        CX 110 21
         TICK
-        CX 100 11
+        CX 120 21
         TICK
-        M 11
+        M 21
         DETECTOR rec[-1]
         MX 110
         DETECTOR rec[-1]
-        MX 100
+        MX 120
         DETECTOR rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [
@@ -1358,13 +1330,13 @@ class SteaneInitializationTest(unittest.TestCase):
         perform_syndrome_extraction_after_injection(circuit)
         circuit.place_tick()
 
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_0_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_1_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_2_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_3_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_4_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_5_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_6_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_0)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_1)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_2)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_3)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_4)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_5)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_6)])
         stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
 
         # Asserting that the detector event is deterministic.
@@ -1382,13 +1354,13 @@ class SteaneInitializationTest(unittest.TestCase):
         circuit.place_tick()
         perform_check(circuit)
 
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_0_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_1_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_2_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_3_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_4_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_5_CHECK)])
-        stim_circuit.append('MY', [mapping.get_id(*STEANE_6_CHECK)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_0)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_1)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_2)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_3)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_4)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_5)])
+        stim_circuit.append('MY', [mapping.get_id(*STEANE_6)])
         stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
 
         # Asserting that the detector event is deterministic.
