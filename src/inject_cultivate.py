@@ -168,8 +168,11 @@ def main() -> None:
     mapping = QubitMapping(7, 7)
     circuit = Circuit(mapping, error_probability)
 
+    stim_circuit = circuit.circuit
+
     steane_code.perform_injection(circuit)
     circuit.place_tick()
+
     steane_code.perform_syndrome_extraction_after_injection(circuit)
     circuit.place_tick()
 

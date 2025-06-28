@@ -6,19 +6,19 @@ from util import Circuit, MultiplexingCircuit, QubitMapping
 
 
 # These coordinates are hardcoded.
-STEANE_6 = (2, 0)
-STEANE_2 = (4, 2)
-STEANE_4 = (0, 2)
 STEANE_0 = (3, 3)
 STEANE_1 = (1, 5)
-STEANE_5 = (3, 5)
+STEANE_2 = (4, 2)
 STEANE_3 = (5, 5)
+STEANE_4 = (0, 2)
+STEANE_5 = (3, 5)
+STEANE_6 = (2, 0)
 
 # Qubit coordinates after the injection stage.
 STEANE_0_INJECTION = (3, 3)
 STEANE_1_INJECTION = (0, 4)
-STEANE_2_INJECTION = (5, 3)
-STEANE_3_INJECTION = (6, 4)
+STEANE_2_INJECTION = (6, 2)
+STEANE_3_INJECTION = (5, 5)
 STEANE_4_INJECTION = (2, 2)
 STEANE_5_INJECTION = (3, 5)
 STEANE_6_INJECTION = (2, 0)
@@ -26,8 +26,8 @@ STEANE_6_INJECTION = (2, 0)
 # Qubit coordinates before and after the check stage.
 STEANE_0_CHECK = (3, 3)
 STEANE_1_CHECK = (1, 5)
-STEANE_2_CHECK = (5, 3)
-STEANE_3_CHECK = (6, 4)
+STEANE_2_CHECK = (6, 2)
+STEANE_3_CHECK = (5, 5)
 STEANE_4_CHECK = (2, 2)
 STEANE_5_CHECK = (3, 5)
 STEANE_6_CHECK = (2, 0)
@@ -503,8 +503,8 @@ def perform_perfect_steane_s_plus_initialization(stim_circuit: stim.Circuit, map
 
 
 def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
-    # Reset qubits 0, 2, 5 and their peers.
     # TICK 0
+    # Reset qubits 0, 2, 5 and their peers.
     circuit.place_reset_x((5, 3))
     circuit.place_reset_x((3, 3))
     circuit.place_reset_x((3, 5))
@@ -523,12 +523,14 @@ def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[Non
     circuit.place_cx((5, 3), (4, 4))
     circuit.place_cx((3, 3), (2, 4))
     circuit.place_reset_x((1, 3))
+    circuit.place_reset_x((6, 2))
     yield
 
     # TICK 3
     circuit.place_cx((3, 3), (4, 2))
     circuit.place_cx((3, 5), (4, 4))
     circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((6, 2), (5, 3))
 
     circuit.place_reset_x((3, 1))
     circuit.place_reset_x((5, 5))
@@ -539,6 +541,7 @@ def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[Non
     circuit.place_cx((3, 1), (4, 2))
     circuit.place_cx((5, 5), (4, 4))
     circuit.place_cx((2, 2), (1, 3))
+    circuit.place_cx((5, 3), (6, 2))
     yield
 
     # TICK 5
@@ -550,13 +553,11 @@ def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[Non
     yield
 
     # TICK 6
-    circuit.place_cx((6, 4), (5, 5))
     circuit.place_cx((4, 2), (3, 1))
     circuit.place_cx((1, 3), (2, 2))
     yield
 
     # TICK 7
-    circuit.place_cx((5, 5), (6, 4))
     circuit.place_cx((3, 1), (2, 2))
     yield
 
@@ -597,70 +598,111 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
 
 def syndrome_extraction_after_injection_generator(
         circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
-    circuit.place_reset_x((3, 1))
-    circuit.place_reset_z((4, 2))
-    circuit.place_reset_x((4, 4))
-    circuit.place_reset_z((5, 5))
+    # For 0145
     circuit.place_reset_x((1, 3))
     circuit.place_reset_z((2, 4))
     circuit.place_reset_z((1, 5))
+    # For 0235
+    circuit.place_reset_x((4, 4))
+    circuit.place_reset_z((5, 3))
+    # For 0246
+    circuit.place_reset_x((3, 1))
+    circuit.place_reset_z((4, 2))
+    circuit.place_reset_x((5, 1))
     yield
 
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((4, 4), (5, 5))
-    circuit.place_cx((1, 3), (2, 4))
+    # Entangling ancillae.
+    # For 0145
     circuit.place_cx((0, 4), (1, 5))
+    circuit.place_cx((1, 3), (2, 4))
+    # For 0235
+    circuit.place_cx((4, 4), (5, 3))
+    # For 0246
+    circuit.place_cx((3, 1), (4, 2))
+    circuit.place_cx((5, 1), (6, 2))  # Moving the qubit 2 to (5, 1).
     yield
 
-    circuit.place_cx((3, 1), (2, 0))
-    circuit.place_cx((4, 2), (5, 3))
-    circuit.place_cx((4, 4), (3, 3))
+    # CX(1)
+    # For 0145
     circuit.place_cx((2, 4), (3, 5))
     circuit.place_cx((1, 5), (0, 4))
-    yield
-
-    circuit.place_cx((3, 1), (2, 2))
+    # For 0235
+    circuit.place_cx((4, 4), (5, 5))
+    circuit.place_cx((5, 3), (6, 2))
+    # For 0246
+    circuit.place_cx((3, 1), (2, 0))
     circuit.place_cx((4, 2), (3, 3))
-    circuit.place_cx((4, 4), (3, 5))
-    circuit.place_cx((2, 4), (1, 5))
     yield
 
+    # CX(2)
+    # For 0145
+    circuit.place_cx((2, 4), (1, 5))
+    # For 0235
+    circuit.place_cx((4, 4), (3, 3))
+    # For 0246
+    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((6, 2), (5, 1))  # Now the qubit 2 is moved to (5, 1).
+    yield
+
+    # CX(3)
+    # For 0145
     circuit.place_cx((1, 3), (2, 2))
     circuit.place_cx((2, 4), (3, 3))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((5, 5), (6, 4))
+    # For 0235
+    circuit.place_cx((4, 4), (3, 5))
+    # For 0246
+    circuit.place_cx((4, 2), (5, 1))
+    circuit.place_reset_z((6, 2))
     yield
 
+    # CX(4)
+    # For 0145
     circuit.place_cx((2, 2), (1, 3))
     circuit.place_cx((3, 3), (2, 4))
-    circuit.place_cx((5, 3), (4, 4))
-    circuit.place_cx((6, 4), (5, 5))
+    # For 0235
+    circuit.place_cx((3, 5), (4, 4))
+    # For 0246
+    circuit.place_cx((5, 1), (4, 2))
     yield
 
-    circuit.place_cx((2, 0), (3, 1))
-    circuit.place_cx((5, 3), (4, 2))
-    circuit.place_cx((3, 3), (4, 4))
+    # CX(5)
+    # For 0145
     circuit.place_cx((3, 5), (2, 4))
+    # For 0235
+    circuit.place_cx((3, 3), (4, 4))
+    # For 0246
+    circuit.place_cx((2, 0), (3, 1))
+    circuit.place_cx((5, 1), (6, 2))  # Moving the qubit 2 back to (6, 2).
     yield
 
+    # CX(6)
+    # For 0145
+    circuit.place_cx((1, 5), (2, 4))
+    # For 0235
+    circuit.place_cx((5, 5), (4, 4))
+    circuit.place_cx((6, 2), (5, 3))
+    # For 0246
     circuit.place_cx((2, 2), (3, 1))
     circuit.place_cx((3, 3), (4, 2))
-    circuit.place_cx((3, 5), (4, 4))
-    circuit.place_cx((1, 5), (2, 4))
     yield
 
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((4, 4), (5, 5))
+    # Disentangling ancillae.
     circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((4, 4), (5, 3))
+    circuit.place_cx((3, 1), (4, 2))
+    circuit.place_cx((6, 2), (5, 1))  # Now the qubit 2 is moved back to (6, 2).
     yield
 
-    circuit.place_detector([circuit.place_measurement_x((3, 1))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_x((4, 4))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((5, 5))], post_selection=True)
+    # For 0145
     circuit.place_detector([circuit.place_measurement_x((1, 3))], post_selection=True)
     circuit.place_detector([circuit.place_measurement_z((2, 4))], post_selection=True)
     circuit.place_detector([circuit.place_measurement_z((0, 4))], post_selection=True)
+    # For 0235
+    circuit.place_detector([circuit.place_measurement_x((4, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((5, 3))], post_selection=True)
+    # For 0246
+    circuit.place_detector([circuit.place_measurement_x((3, 1))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
 
 
 def perform_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -676,9 +718,9 @@ def perform_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingC
 def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     circuit.place_reset_x((3, 1))
     circuit.place_reset_x((4, 2))
-    circuit.place_reset_x((1, 1))
+    circuit.place_reset_x((5, 3))
     circuit.place_reset_x((4, 4))
-    circuit.place_reset_x((5, 5))
+    circuit.place_reset_x((1, 3))
     circuit.place_reset_x((2, 4))
     circuit.place_single_qubit_gate('S_DAG', STEANE_0_CHECK)
     circuit.place_single_qubit_gate('S_DAG', STEANE_1_CHECK)
@@ -689,17 +731,17 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_single_qubit_gate('S_DAG', STEANE_6_CHECK)
     yield
 
-    circuit.place_cx((1, 1), (2, 0))
-    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((3, 1), (2, 0))
     circuit.place_cx((4, 2), (3, 3))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((5, 5), (6, 4))
+    circuit.place_cx((5, 3), (6, 2))
+    circuit.place_cx((4, 4), (5, 5))
+    circuit.place_cx((1, 3), (2, 2))
     circuit.place_cx((2, 4), (1, 5))
     yield
 
-    circuit.place_cx((2, 2), (1, 1))
+    circuit.place_cx((2, 2), (3, 1))
+    circuit.place_cx((4, 4), (5, 3))
     circuit.place_cx((3, 3), (2, 4))
-    circuit.place_cx((4, 4), (5, 5))
     yield
 
     circuit.place_cx((3, 3), (2, 2))
@@ -723,16 +765,16 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_cx((4, 4), (3, 5))
     yield
 
-    circuit.place_cx((2, 2), (1, 1))
+    circuit.place_cx((2, 2), (3, 1))
+    circuit.place_cx((4, 4), (5, 3))
     circuit.place_cx((3, 3), (2, 4))
-    circuit.place_cx((4, 4), (5, 5))
     yield
 
-    circuit.place_cx((1, 1), (2, 0))
-    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((3, 1), (2, 0))
     circuit.place_cx((4, 2), (3, 3))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((5, 5), (6, 4))
+    circuit.place_cx((5, 3), (6, 2))
+    circuit.place_cx((4, 4), (5, 5))
+    circuit.place_cx((1, 3), (2, 2))
     circuit.place_cx((2, 4), (1, 5))
     yield
 
@@ -744,9 +786,10 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_single_qubit_gate('S', STEANE_5_CHECK)
     circuit.place_single_qubit_gate('S', STEANE_6_CHECK)
 
-    for pos in [(3, 1), (4, 2), (1, 1), (4, 4), (5, 5), (2, 4)]:
+    for pos in [(3, 1), (4, 2), (5, 3), (4, 4), (1, 3), (2, 4)]:
         m = circuit.place_measurement_x(pos)
         circuit.place_detector([m], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((4, 6))], post_selection=True)
 
 
 def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:

@@ -65,10 +65,10 @@ class SteanePlusSurfaceCode:
                 if i == 0 and j % 2 == 0 and j < surface_distance - 1:
                     m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, True)
                     self.surface_syndrome_measurements[(x + 1, y - 1)] = m
-                if i == surface_distance - 1 and j % 2 == 1:
+                if i == surface_distance - 1 and j % 2 == 1 and j < surface_distance - 1:
                     m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), TWO_WEIGHT_UP, True)
                     self.surface_syndrome_measurements[(x + 1, y + 1)] = m
-                if j == 0 and i % 2 == 1:
+                if j == 0 and i % 2 == 1 and i < surface_distance - 1:
                     m = SurfaceZSyndromeMeasurement(self.circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, False)
                     self.surface_syndrome_measurements[(x - 1, y + 1)] = m
                 if j == surface_distance - 1 and i % 2 == 0 and i < surface_distance - 1:
