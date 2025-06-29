@@ -2,6 +2,8 @@ import textwrap
 import unittest
 
 from steane_code import *
+from surface_code import SurfaceSyndromeMeasurement, SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
+from surface_code import SurfaceStabilizerPattern
 from util import QubitMapping, Circuit, DetectorIdentifier
 
 
@@ -1364,4 +1366,197 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.append('DETECTOR', [stim.target_rec(i) for i in range(-7, 0)])
 
         # Asserting that the detector event is deterministic.
+        stim_circuit.detector_error_model()
+
+    def _setup_surface_code_patch_to_plus(
+            self, circuit: Circuit, surface_offset: tuple[int, int], surface_distance: int,
+            surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement]) -> None:
+        FOUR_WEIGHT = SurfaceStabilizerPattern.FOUR_WEIGHT
+        TWO_WEIGHT_UP = SurfaceStabilizerPattern.TWO_WEIGHT_UP
+        TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
+        TWO_WEIGHT_LEFT = SurfaceStabilizerPattern.TWO_WEIGHT_LEFT
+        TWO_WEIGHT_RIGHT = SurfaceStabilizerPattern.TWO_WEIGHT_RIGHT
+        SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
+
+        (surface_offset_x, surface_offset_y) = surface_offset
+
+        m: SurfaceSyndromeMeasurement
+        # Initializing the surface code patch. The logical state is \ket{+}.
+        for i in range(surface_distance):
+            for j in range(surface_distance):
+                x = surface_offset_x + j * 2
+                y = surface_offset_y + i * 2
+                circuit.place_reset_x((x, y))
+
+                # Weight-two syndrome measurements:
+                if i == 0 and j % 2 == 0 and j < surface_distance - 1:
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, True)
+                    surface_syndrome_measurements[(x + 1, y - 1)] = m
+                if i == surface_distance - 1 and j % 2 == 1 and j < surface_distance - 1:
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_UP, True)
+                    surface_syndrome_measurements[(x + 1, y + 1)] = m
+                if j == 0 and i % 2 == 1 and i < surface_distance - 1:
+                    m = SurfaceZSyndromeMeasurement(circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, False)
+                    surface_syndrome_measurements[(x - 1, y + 1)] = m
+                if j == surface_distance - 1 and i % 2 == 0 and i < surface_distance - 1:
+                    m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_LEFT, False)
+                    surface_syndrome_measurements[(x + 1, y + 1)] = m
+
+                # Weight-four syndrome measurements:
+                if i < surface_distance - 1 and j < surface_distance - 1:
+                    if (i + j) % 2 == 0:
+                        m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, False)
+                    else:
+                        m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, True)
+                    surface_syndrome_measurements[(x + 1, y + 1)] = m
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            for m in surface_syndrome_measurements.values():
+                m.run()
+            circuit.place_tick()
+
+        # Remove some syndrome measurements before the lattice surgery.
+        for j in range(surface_distance):
+            x = surface_offset_x + j * 2
+            y = surface_offset_y
+            if j % 2 == 0 and j < surface_distance - 1:
+                del surface_syndrome_measurements[(x + 1, y - 1)]
+
+    def test_lattice_surgery_plus(self) -> None:
+        mapping = QubitMapping(20, 20)
+        circuit = Circuit(mapping, 0)
+        stim_circuit = circuit.circuit
+        surface_distance = 5
+        results = LatticeSurgeryMeasurements()
+        surface_offset_x = 1
+        surface_offset_y = 7
+        SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
+
+        TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
+
+        surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
+        # Initializing the surface code patch. The logical state is \ket{+}.
+        self._setup_surface_code_patch_to_plus(
+            circuit, (surface_offset_x, surface_offset_y), surface_distance,
+            surface_syndrome_measurements)
+
+        perform_perfect_steane_plus_initialization(stim_circuit, mapping)
+        circuit.place_tick()
+
+        g = lattice_surgery_generator(circuit, surface_distance, results)
+
+        tick = 0
+        while not results.is_complete():
+            if tick >= 4:
+                for m in surface_syndrome_measurements.values():
+                    m.run()
+
+            try:
+                next(g)
+            except StopIteration:
+                assert results.is_complete()
+
+            circuit.place_tick()
+            tick += 1
+
+        for m in surface_syndrome_measurements.values():
+            assert m.is_complete()
+
+        # Reconfigure some syndrome measurements after the lattice surgery.
+        for j in range(surface_distance):
+            x = surface_offset_x + j * 2
+            y = surface_offset_y
+            if j % 2 == 0 and j < surface_distance - 1:
+                m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
+                surface_syndrome_measurements[(x + 1, y - 1)] = m
+
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
+            for m in surface_syndrome_measurements.values():
+                m.run()
+            circuit.place_tick()
+
+        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
+        assert last is not None
+        # Place a detector for the six-weight syndrome.
+        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
+
+        # Place an observable for the logical value.
+        logical_x_pauli_string = stim.PauliString()
+        for i in range(surface_distance):
+            x = surface_offset_x
+            y = surface_offset_y + i * 2
+            logical_x_pauli_string *= stim.PauliString('X{}'.format(mapping.get_id(x, y)))
+        circuit.place_observable_include(
+            [circuit.place_mpp(logical_x_pauli_string)] + results.logical_x_measurements())
+
+        # Asserting that the detector event model is deterministic.
+        stim_circuit.detector_error_model()
+
+    def test_lattice_surgery_zero(self) -> None:
+        mapping = QubitMapping(20, 20)
+        circuit = Circuit(mapping, 0)
+        stim_circuit = circuit.circuit
+        surface_distance = 5
+        results = LatticeSurgeryMeasurements()
+        surface_offset_x = 1
+        surface_offset_y = 7
+        SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
+
+        TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
+
+        surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
+        # Initializing the surface code patch. The logical state is \ket{+}.
+        self._setup_surface_code_patch_to_plus(
+            circuit, (surface_offset_x, surface_offset_y), surface_distance,
+            surface_syndrome_measurements)
+
+        perform_perfect_steane_zero_initialization(stim_circuit, mapping)
+        circuit.place_tick()
+
+        g = lattice_surgery_generator(circuit, surface_distance, results)
+
+        tick = 0
+        while not results.is_complete():
+            if tick >= 4:
+                for m in surface_syndrome_measurements.values():
+                    m.run()
+
+            try:
+                next(g)
+            except StopIteration:
+                assert results.is_complete()
+
+            circuit.place_tick()
+            tick += 1
+
+        for m in surface_syndrome_measurements.values():
+            assert m.is_complete()
+
+        # Reconfigure some syndrome measurements after the lattice surgery.
+        for j in range(surface_distance):
+            x = surface_offset_x + j * 2
+            y = surface_offset_y
+            if j % 2 == 0 and j < surface_distance - 1:
+                m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
+                surface_syndrome_measurements[(x + 1, y - 1)] = m
+
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
+            for m in surface_syndrome_measurements.values():
+                m.run()
+            circuit.place_tick()
+
+        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
+        assert last is not None
+        # Place a detector for the six-weight syndrome.
+        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
+
+        # Place an observable for the logical value.
+        logical_z_pauli_string = stim.PauliString()
+        for j in range(surface_distance):
+            x = surface_offset_x + j * 2
+            y = surface_offset_y
+            logical_z_pauli_string *= stim.PauliString('Z{}'.format(mapping.get_id(x, y)))
+        circuit.place_observable_include(
+            [circuit.place_mpp(logical_z_pauli_string)] + results.lattice_surgery_zz_measurements())
+
+        # Asserting that the detector event model is deterministic.
         stim_circuit.detector_error_model()
