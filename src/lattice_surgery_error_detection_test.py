@@ -58,24 +58,9 @@ class SteanePlusSurfaceCodeTest(unittest.TestCase):
         self.assertTrue(ms[(4, 12)].already_satisfied)
         self.assertFalse(ms[(4, 12)].post_selection)
 
-        lsms = m.lattice_surgery_syndrome_measurements
-        self.assertEqual(len(lsms), 2)
-        assert isinstance(lsms[0], SurfaceZSyndromeMeasurement)
-        self.assertEqual(lsms[0].ancilla_position, (0, 6))
-        self.assertEqual(lsms[0].pattern, SurfaceStabilizerPattern.TWO_WEIGHT_RIGHT)
-        self.assertTrue(lsms[0].post_selection)
-
-        assert isinstance(lsms[1], SurfaceZSyndromeMeasurement)
-        self.assertEqual(lsms[1].ancilla_position, (4, 6))
-        self.assertEqual(lsms[1].pattern, SurfaceStabilizerPattern.FOUR_WEIGHT)
-        self.assertTrue(lsms[1].post_selection)
-
     def test_init_post_selection(self) -> None:
         mapping = QubitMapping(20, 20)
         m = SteanePlusSurfaceCode(mapping, 3, InitialValue.Plus, 0, True)
 
         for m0 in m.surface_syndrome_measurements.values():
             self.assertTrue(m0.post_selection)
-
-        for m1 in m.lattice_surgery_syndrome_measurements:
-            self.assertTrue(m1.post_selection)

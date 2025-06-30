@@ -1446,7 +1446,7 @@ class SteaneInitializationTest(unittest.TestCase):
 
         tick = 0
         while not results.is_complete():
-            if tick >= 4:
+            if tick >= 3:
                 for m in surface_syndrome_measurements.values():
                     m.run()
 
@@ -1516,7 +1516,7 @@ class SteaneInitializationTest(unittest.TestCase):
 
         tick = 0
         while not results.is_complete():
-            if tick >= 4:
+            if tick >= 3:
                 for m in surface_syndrome_measurements.values():
                     m.run()
 

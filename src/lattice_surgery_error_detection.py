@@ -31,23 +31,18 @@ class SteanePlusSurfaceCode:
         self.error_probability = error_probability
         self.full_post_selection = full_post_selection
         self.circuit = Circuit(mapping, error_probability)
-        self.steane_z0145 = SteaneZ0145SyndromeMeasurement(self.circuit)
-        self.steane_z0235 = SteaneZ0235SyndromeMeasurement(self.circuit)
-        self.steane_z0246 = SteaneZ0246SyndromeMeasurement(self.circuit)
         self.surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
-        self.lattice_surgery_syndrome_measurements: list[SurfaceSyndromeMeasurement] = []
-        self.steane_x_measurements: list[MeasurementIdentifier] = []
         self.surface_x_measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
         self.surface_z_measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
-        self.surface_code_offset_x = 1
-        self.surface_code_offset_y = 7
+        self.surface_offset_x = 1
+        self.surface_offset_y = 7
 
         self._setup_syndrome_measurements()
 
     def _setup_syndrome_measurements(self) -> None:
         surface_distance = self.surface_distance
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
+        surface_code_offset_x = self.surface_offset_x
+        surface_code_offset_y = self.surface_offset_y
 
         FOUR_WEIGHT = SurfaceStabilizerPattern.FOUR_WEIGHT
         TWO_WEIGHT_UP = SurfaceStabilizerPattern.TWO_WEIGHT_UP
@@ -85,57 +80,88 @@ class SteanePlusSurfaceCode:
                     if i + j <= surface_distance // 2 and (i + j) % 2 == 1:
                         m.set_post_selection(True)
 
-                # Lattice surgery syndrome measurements:
-                if i == 0 and j == 0:
-                    m = SurfaceZSyndromeMeasurement(self.circuit, (x - 1, y - 1), TWO_WEIGHT_RIGHT, False)
-                    m.set_post_selection(True)
-                    self.lattice_surgery_syndrome_measurements.append(m)
-                elif i == 0 and j == 1:
-                    m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y - 1), FOUR_WEIGHT, False)
-                    m.set_post_selection(True)
-                    self.lattice_surgery_syndrome_measurements.append(m)
-                elif i == 0 and j % 2 == 1:
-                    m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
-                    m.set_post_selection(True)
-                    self.lattice_surgery_syndrome_measurements.append(m)
-
         if self.full_post_selection:
             for m in self.surface_syndrome_measurements.values():
                 m.set_post_selection(True)
 
     def run(self) -> None:
-        depth_for_surface_code_syndrome_measurement = 6
+        SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
         surface_distance = self.surface_distance
         circuit = self.circuit
 
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
+        surface_offset_x = self.surface_offset_x
+        surface_offset_y = self.surface_offset_y
 
         for i in range(surface_distance):
             for j in range(surface_distance):
-                x = surface_code_offset_x + j * 2
-                y = surface_code_offset_y + i * 2
+                x = surface_offset_x + j * 2
+                y = surface_offset_y + i * 2
                 circuit.place_reset_x((x, y))
 
-        for i in range(depth_for_surface_code_syndrome_measurement - 1):
+        SURFACE_DEPTH_OFFSET = 3
+        for i in range(SURFACE_DEPTH_OFFSET):
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
+
         match self.initial_value:
             case InitialValue.Plus:
                 steane_code.perform_perfect_steane_plus_initialization(circuit.circuit, self.mapping)
             case InitialValue.Zero:
                 steane_code.perform_perfect_steane_zero_initialization(circuit.circuit, self.mapping)
-        for m in self.surface_syndrome_measurements.values():
-            m.run()
-        circuit.place_tick()
+        ls_results = steane_code.LatticeSurgeryMeasurements()
+        g = steane_code.lattice_surgery_generator(circuit, surface_distance, ls_results)
 
-        self._perform_lattice_surgery()
+        tick = SURFACE_DEPTH_OFFSET
+        while True:
+            if tick == SURFACE_SYNDROME_MEASUREMENT_DEPTH:
+                # Remove the stabilizers that conflict with the lattice surgery.
+                for j in range(surface_distance):
+                    x = surface_offset_x + j * 2
+                    y = surface_offset_y
+                    if j % 2 == 0 and j < surface_distance - 1:
+                        del self.surface_syndrome_measurements[(x + 1, y - 1)]
+
+            for m in self.surface_syndrome_measurements.values():
+                m.run()
+
+            try:
+                next(g)
+            except StopIteration:
+                assert ls_results.is_complete()
+                circuit.place_tick()
+                break
+
+            circuit.place_tick()
+            tick += 1
+
+        for m in self.surface_syndrome_measurements.values():
+            assert m.is_complete()
+
+        # Let's recover and reconfigure some stabilizers.
+        for j in range(surface_distance):
+            x = surface_offset_x + j * 2
+            y = surface_offset_y
+            if j % 2 == 0 and j < surface_distance - 1:
+                m = SurfaceXSyndromeMeasurement(
+                    self.circuit, (x + 1, y - 1), SurfaceStabilizerPattern.TWO_WEIGHT_DOWN, False)
+                self.surface_syndrome_measurements[(x + 1, y - 1)] = m
+                m.set_post_selection(self.full_post_selection)
+
+        for i in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            for m in self.surface_syndrome_measurements.values():
+                m.run()
+            circuit.place_tick()
+
+        # Place a detector for the six-weight X stabilizer.
+        last = self.surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
+        assert last is not None
+        circuit.place_detector(ls_results.x_0145_measurements() + [last], post_selection=True)
 
         if not self.full_post_selection:
-            # We perform one-round syndrome measurement at the last of `_perform_lattice_surgery()`, and that's why
-            # we perform `(surface_distance - 1)` rounds syndrome measurment here.
-            for i in range(depth_for_surface_code_syndrome_measurement * (surface_distance - 1)):
+            # We perform one-round of syndrome measurements above.
+            # Hence, here we perform `(surface_distance - 1)` rounds of syndrome measurments.
+            for i in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * (surface_distance - 1)):
                 for m in self.surface_syndrome_measurements.values():
                     m.run()
                 circuit.place_tick()
@@ -146,12 +172,8 @@ class SteanePlusSurfaceCode:
                 measurements = self.surface_x_measurements
                 assert len(measurements) == surface_distance * surface_distance
                 xs = [
-                    measurements[
-                        (surface_code_offset_x, surface_code_offset_y + i * 2)
-                    ] for i in range(surface_distance)
-                ] + [
-                    self.steane_x_measurements[1], self.steane_x_measurements[4], self.steane_x_measurements[6]
-                ]
+                    measurements[(surface_offset_x, surface_offset_y + i * 2)] for i in range(surface_distance)
+                ] + ls_results.logical_x_measurements()
                 circuit.place_observable_include(xs, ObservableIdentifier(0))
             case InitialValue.Zero:
                 self._perform_destructive_z_measurement()
@@ -159,13 +181,9 @@ class SteanePlusSurfaceCode:
                 assert len(measurements) == surface_distance * surface_distance
                 zs = [
                     measurements[
-                        (surface_code_offset_x + j * 2, surface_code_offset_y + 2 * 0)
+                        (surface_offset_x + j * 2, surface_offset_y + 2 * 0)
                     ] for j in range(surface_distance)
-                ]
-                for m in self.lattice_surgery_syndrome_measurements:
-                    last = m.last_measurement
-                    assert last is not None
-                    zs.append(last)
+                ] + ls_results.lattice_surgery_zz_measurements()
                 circuit.place_observable_include(zs, ObservableIdentifier(0))
 
     def run_surface_only(self) -> None:
@@ -173,8 +191,8 @@ class SteanePlusSurfaceCode:
         surface_distance = self.surface_distance
         circuit = self.circuit
 
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
+        surface_code_offset_x = self.surface_offset_x
+        surface_code_offset_y = self.surface_offset_y
 
         for i in range(surface_distance):
             for j in range(surface_distance):
@@ -194,153 +212,11 @@ class SteanePlusSurfaceCode:
         xs = [measurements[(surface_code_offset_x, surface_code_offset_y + i * 2)] for i in range(surface_distance)]
         circuit.place_observable_include(xs, ObservableIdentifier(0))
 
-    def _perform_lattice_surgery(self) -> None:
-        depth_for_surface_code_syndrome_measurement = 6
-        lattice_surgery_distance = 3
-        num_steane_syndrome_measurement_rounds = 2
-        circuit = self.circuit
-        surface_distance = self.surface_distance
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
-        z0145 = self.steane_z0145
-        z0235 = self.steane_z0235
-        z0246 = self.steane_z0246
-
-        for i in range(surface_distance):
-            for j in range(surface_distance):
-                x = surface_code_offset_x + j * 2
-                y = surface_code_offset_y + i * 2
-                if i == 0 and j % 2 == 0 and j < surface_distance - 1:
-                    # This stabilizer conflicts with the lattice surgery, let's remove it.
-                    del self.surface_syndrome_measurements[(x + 1, y - 1)]
-
-                if j < surface_distance - 1 and i < surface_distance - 1:
-                    if (j, i) == (1, 0) or (j, i) == (0, 1):
-                        m = self.surface_syndrome_measurements[(x + 1, y + 1)]
-                        m.set_post_selection(True)
-
-        m0: MeasurementIdentifier | None = None
-        m1: MeasurementIdentifier | None = None
-        m2: MeasurementIdentifier | None = None
-        m3: MeasurementIdentifier | None = None
-        m4: MeasurementIdentifier | None = None
-        m5: MeasurementIdentifier | None = None
-        m6: MeasurementIdentifier | None = None
-
-        # We want Steane Z syndrome measurements to touch qubits 1, 3, and 5 after the lattice surgery Z syndrome
-        # measurements touch them.
-        z0145.lock_qubit_1()
-        z0145.lock_qubit_5()
-        z0235.lock_qubit_3()
-        z0235.lock_qubit_5()
-
-        for i in range(depth_for_surface_code_syndrome_measurement * lattice_surgery_distance):
-            # TODO: Remove these magic numbers.
-            if i == 3:
-                z0145.unlock_qubit_1()
-                z0145.unlock_qubit_5()
-                z0235.unlock_qubit_5()
-            if i == 5:
-                z0235.unlock_qubit_3()
-
-            for m in self.surface_syndrome_measurements.values():
-                m.run()
-            for m in self.lattice_surgery_syndrome_measurements:
-                m.run()
-
-            if z0145.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
-               z0235.num_rounds() >= num_steane_syndrome_measurement_rounds - 1 and \
-               z0246.num_rounds() >= num_steane_syndrome_measurement_rounds - 1:
-                num_steane_rounds = num_steane_syndrome_measurement_rounds
-
-                if m0 is None and z0145.is_done_with_qubit_0() and \
-                        z0235.is_done_with_qubit_0() and z0246.is_done_with_qubit_0():
-                    m0 = self.circuit.place_measurement_x(STEANE_0)
-                if m2 is None and z0145.is_done_with_qubit_2() and \
-                        z0235.is_done_with_qubit_2() and z0246.is_done_with_qubit_2():
-                    m2 = self.circuit.place_measurement_x(STEANE_2)
-                if m4 is None and z0145.is_done_with_qubit_4() and \
-                        z0235.is_done_with_qubit_4() and z0246.is_done_with_qubit_4():
-                    m4 = self.circuit.place_measurement_x(STEANE_4)
-                if m6 is None and z0145.is_done_with_qubit_6() and \
-                        z0235.is_done_with_qubit_6() and z0246.is_done_with_qubit_6():
-                    m6 = self.circuit.place_measurement_x(STEANE_6)
-
-            # TODO: Remove these magic numbers.
-            if i == 16:
-                m1 = self.circuit.place_measurement_x(STEANE_1)
-            if i == 16:
-                m3 = self.circuit.place_measurement_x(STEANE_3)
-            if i == 14:
-                m5 = self.circuit.place_measurement_x(STEANE_5)
-
-            if z0145.num_rounds() < num_steane_syndrome_measurement_rounds and z0145.run():
-                z0145.advance()
-            if z0235.num_rounds() < num_steane_syndrome_measurement_rounds and z0235.run():
-                z0235.advance()
-            if z0246.num_rounds() < num_steane_syndrome_measurement_rounds and z0246.run():
-                z0246.advance()
-            self.circuit.place_tick()
-
-        # Here we implicitly assume that performing lattice surgery syndrome measurements three times takes longer than
-        # performing Steane syndrome measurements twice.
-        assert z0145.num_rounds() == num_steane_syndrome_measurement_rounds
-        assert z0235.num_rounds() == num_steane_syndrome_measurement_rounds
-        assert z0246.num_rounds() == num_steane_syndrome_measurement_rounds
-
-        if m0 is None:
-            m0 = self.circuit.place_measurement_x(STEANE_0)
-        if m1 is None:
-            m1 = self.circuit.place_measurement_x(STEANE_1)
-        if m2 is None:
-            m2 = self.circuit.place_measurement_x(STEANE_2)
-        if m3 is None:
-            m3 = self.circuit.place_measurement_x(STEANE_3)
-        if m4 is None:
-            m4 = self.circuit.place_measurement_x(STEANE_4)
-        if m5 is None:
-            m5 = self.circuit.place_measurement_x(STEANE_5)
-        if m6 is None:
-            m6 = self.circuit.place_measurement_x(STEANE_6)
-        self.steane_x_measurements = [m0, m1, m2, m3, m4, m5, m6]
-
-        circuit.place_detector([m0, m2, m4, m6], post_selection=True)
-        circuit.place_detector([m0, m2, m3, m5], post_selection=True)
-
-        # Let's recover and reconfigure some stabilizers.
-        for i in range(surface_distance):
-            for j in range(surface_distance):
-                x = surface_code_offset_x + j * 2
-                y = surface_code_offset_y + i * 2
-                if i == 0 and j % 2 == 0 and j < surface_distance - 1:
-                    m = SurfaceXSyndromeMeasurement(
-                        self.circuit, (x + 1, y - 1), SurfaceStabilizerPattern.TWO_WEIGHT_DOWN, False)
-                    self.surface_syndrome_measurements[(x + 1, y - 1)] = m
-                    m.set_post_selection(True)
-
-                if j < surface_distance - 1 and i < surface_distance - 1:
-                    if (j, i) == (1, 0) or (j, i) == (0, 1):
-                        m = self.surface_syndrome_measurements[(x + 1, y + 1)]
-                        m.set_post_selection(True)
-
-        for i in range(depth_for_surface_code_syndrome_measurement):
-            for m in self.surface_syndrome_measurements.values():
-                m.run()
-            circuit.place_tick()
-
-        # We perform six-weight X stabilizer measurements virtually.
-        m = self.surface_syndrome_measurements[(surface_code_offset_x + 1, surface_code_offset_y - 1)]
-        assert isinstance(m, SurfaceXSyndromeMeasurement)
-        assert m.pattern == SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
-        last = m.last_measurement
-        assert last is not None
-        circuit.place_detector([m0, m1, m4, m5, last], post_selection=True)
-
     def _perform_destructive_x_measurement(self) -> None:
         surface_distance = self.surface_distance
         circuit = self.circuit
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
+        surface_code_offset_x = self.surface_offset_x
+        surface_code_offset_y = self.surface_offset_y
         post_selection = self.full_post_selection
 
         last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
@@ -386,8 +262,8 @@ class SteanePlusSurfaceCode:
     def _perform_destructive_z_measurement(self) -> None:
         surface_distance = self.surface_distance
         circuit = self.circuit
-        surface_code_offset_x = self.surface_code_offset_x
-        surface_code_offset_y = self.surface_code_offset_y
+        surface_code_offset_x = self.surface_offset_x
+        surface_code_offset_y = self.surface_offset_y
         post_selection = self.full_post_selection
 
         last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
@@ -439,6 +315,7 @@ def main() -> None:
     parser.add_argument('--parallelism', type=int, default=1)
     parser.add_argument('--surface-distance', type=int, default=3)
     parser.add_argument('--initial-value', choices=['+', '0'], default='+')
+    parser.add_argument('--perfect-initialization', action='store_true',)
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--print-circuit', action='store_true')
 
@@ -450,6 +327,7 @@ def main() -> None:
     print('  parallelism = {}'.format(args.parallelism))
     print('  surface-distance = {}'.format(args.surface_distance))
     print('  initial-value = {}'.format(args.initial_value))
+    print('  perfect-initialization = {}'.format(args.perfect_initialization))
     print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  print-circuit = {}'.format(args.print_circuit))
 
@@ -465,11 +343,13 @@ def main() -> None:
             initial_value = InitialValue.Zero
         case _:
             assert False
+    perfect_initialization: bool = args.perfect_initialization
     full_post_selection: bool = args.full_post_selection
     print_circuit: bool = args.print_circuit
 
     mapping = QubitMapping(30, 30)
-    r = SteanePlusSurfaceCode(mapping, surface_distance, initial_value, error_probability, full_post_selection)
+    r = SteanePlusSurfaceCode(
+        mapping, surface_distance, initial_value, error_probability, full_post_selection)
     circuit = r.circuit
     stim_circuit = circuit.circuit
     r.run()
