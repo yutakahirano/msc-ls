@@ -779,7 +779,6 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     for pos in [(3, 1), (4, 2), (5, 3), (4, 4), (1, 3), (2, 4)]:
         m = circuit.place_measurement_x(pos)
         circuit.place_detector([m], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((4, 6))], post_selection=True)
 
 
 def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:

@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pymatching
 import stim
+import sys
 
 import steane_code
 
@@ -29,10 +30,12 @@ class InitialValue(enum.Enum):
 # Representing a merged QEC code of the Steane code and the rotated surface code.
 class SteanePlusSurfaceCode:
     def __init__(self, mapping: QubitMapping, surface_distance: int, initial_value: InitialValue,
+                 perfect_initialization: bool,
                  error_probability: float, full_post_selection: bool) -> None:
         self.mapping = mapping
         self.surface_distance = surface_distance
         self.initial_value = initial_value
+        self.perfect_initialization = perfect_initialization
         self.error_probability = error_probability
         self.full_post_selection = full_post_selection
         self.primal_circuit = Circuit(mapping, error_probability)
@@ -108,27 +111,57 @@ class SteanePlusSurfaceCode:
         surface_offset_x = self.surface_offset_x
         surface_offset_y = self.surface_offset_y
 
-        for i in range(surface_distance):
-            for j in range(surface_distance):
-                x = surface_offset_x + j * 2
-                y = surface_offset_y + i * 2
-                circuit.place_reset_x((x, y))
+        if self.perfect_initialization:
+            for i in range(surface_distance):
+                for j in range(surface_distance):
+                    x = surface_offset_x + j * 2
+                    y = surface_offset_y + i * 2
+                    circuit.place_reset_x((x, y))
 
-        SURFACE_DEPTH_OFFSET = 3
-        for i in range(SURFACE_DEPTH_OFFSET):
-            for m in self.surface_syndrome_measurements.values():
-                m.run()
+            SURFACE_DEPTH_OFFSET = 3
+            for i in range(SURFACE_DEPTH_OFFSET):
+                for m in self.surface_syndrome_measurements.values():
+                    m.run()
+                circuit.place_tick()
+
+            for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
+                match self.initial_value:
+                    case InitialValue.Plus:
+                        steane_code.perform_perfect_steane_plus_initialization(stim_circuit, mapping)
+                    case InitialValue.Zero:
+                        steane_code.perform_perfect_steane_zero_initialization(stim_circuit, mapping)
+                    case InitialValue.SPlus:
+                        steane_code.perform_perfect_steane_s_plus_initialization(stim_circuit, mapping)
+        else:
+            steane_code.perform_injection(circuit)
+            circuit.place_tick()
+            steane_code.perform_syndrome_extraction_after_injection(circuit)
             circuit.place_tick()
 
-        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
-            match self.initial_value:
-                case InitialValue.Plus:
-                    steane_code.perform_perfect_steane_plus_initialization(stim_circuit, mapping)
-                case InitialValue.Zero:
-                    steane_code.perform_perfect_steane_zero_initialization(stim_circuit, mapping)
-                case InitialValue.SPlus:
-                    steane_code.perform_perfect_steane_s_plus_initialization(stim_circuit, mapping)
+            g = steane_code.check_generator(circuit)
+            tick = 0
+            while True:
+                if tick == 9:
+                    for i in range(surface_distance):
+                        for j in range(surface_distance):
+                            x = surface_offset_x + j * 2
+                            y = surface_offset_y + i * 2
+                            circuit.place_reset_x((x, y))
+                if tick >= 9:
+                    for m in self.surface_syndrome_measurements.values():
+                        m.run()
+                try:
+                    next(g)
+                except StopIteration:
+                    break
+                circuit.place_tick()
+                tick += 1
 
+            circuit.place_tick()
+
+        # After the Steane code initialization, we place boundary ancillae for the complementary gap.
+        # Note that the exact timing does not matter because `partially_noiseless_circuit` assumes noise-free
+        # qubits on the Steane code region.
         for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
             stim_circuit.append('RX', self.x_boundary_ancilla_id)
             stim_circuit.append('CX', [self.x_boundary_ancilla_id, mapping.get_id(*STEANE_1)])
@@ -141,10 +174,13 @@ class SteanePlusSurfaceCode:
 
         ls_results = steane_code.LatticeSurgeryMeasurements()
         g = steane_code.lattice_surgery_generator(circuit, surface_distance, ls_results)
-        tick = SURFACE_DEPTH_OFFSET
+        performing_first_syndrome_extraction = True
+
         while True:
-            if tick == SURFACE_SYNDROME_MEASUREMENT_DEPTH:
+            if performing_first_syndrome_extraction and \
+                    any([m.is_complete() for m in self.surface_syndrome_measurements.values()]):
                 assert all([m.is_complete() for m in self.surface_syndrome_measurements.values()])
+                performing_first_syndrome_extraction = False
 
                 # Remove the stabilizers that conflict with the lattice surgery.
                 for j in range(surface_distance):
@@ -164,7 +200,6 @@ class SteanePlusSurfaceCode:
                 break
 
             circuit.place_tick()
-            tick += 1
 
         self.partially_noiseless_circuit.mark_qubits_as_noiseless([])
         # Let's recover and reconfigure some stabilizers.
@@ -359,7 +394,7 @@ def perform_simulation(
             c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
         except ValueError:
             c_prediction = None
-            c_weight = c_weight
+            c_weight = math.inf
         if c_weight < min_weight:
             prediction = c_prediction
         min_weight = min(min_weight, c_weight)
@@ -370,7 +405,7 @@ def perform_simulation(
             c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
         except ValueError:
             c_prediction = None
-            c_weight = c_weight
+            c_weight = math.inf
         if c_weight < min_weight:
             prediction = c_prediction
         min_weight = min(min_weight, c_weight)
@@ -382,7 +417,7 @@ def perform_simulation(
             c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
         except ValueError:
             c_prediction = None
-            c_weight = c_weight
+            c_weight = math.inf
         if c_weight < min_weight:
             prediction = c_prediction
         min_weight = min(min_weight, c_weight)
@@ -516,11 +551,23 @@ def main() -> None:
     parser.add_argument('--max-shots-per-task', type=int, default=2 ** 20)
     parser.add_argument('--surface-distance', type=int, default=3)
     parser.add_argument('--initial-value', choices=['+', '0', 'S+'], default='+')
+    parser.add_argument('--perfect-initialization', action='store_true')
+    parser.add_argument('--imperfect-initialization', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--print-circuit', action='store_true')
     parser.add_argument('--show-progress', action='store_true')
 
     args = parser.parse_args()
+
+    if args.perfect_initialization and args.imperfect_initialization:
+        print('Error: Cannot specify both --perfect-initialization and --imperfect-initialization.', file=sys.stderr)
+        return
+
+    perfect_initialization: bool = False
+    if args.perfect_initialization:
+        perfect_initialization = True
+    elif args.imperfect_initialization:
+        perfect_initialization = False
 
     print('  num-shots = {}'.format(args.num_shots))
     print('  error-probability = {}'.format(args.error_probability))
@@ -528,6 +575,7 @@ def main() -> None:
     print('  max-shots-per-task = {}'.format(args.max_shots_per_task))
     print('  surface-distance = {}'.format(args.surface_distance))
     print('  initial-value = {}'.format(args.initial_value))
+    print('  perfect-initialization = {}'.format(perfect_initialization))
     print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  print-circuit = {}'.format(args.print_circuit))
     print('  show-progress = {}'.format(args.show_progress))
@@ -551,7 +599,8 @@ def main() -> None:
     show_progress: bool = args.show_progress
 
     mapping = QubitMapping(30, 30)
-    r = SteanePlusSurfaceCode(mapping, surface_distance, initial_value, error_probability, full_post_selection)
+    r = SteanePlusSurfaceCode(
+        mapping, surface_distance, initial_value, perfect_initialization, error_probability, full_post_selection)
     primal_circuit = r.primal_circuit
     partially_noiseless_circuit = r.partially_noiseless_circuit
     stim_circuit = primal_circuit.circuit
@@ -586,7 +635,7 @@ def main() -> None:
         show_progress=False)
     initial_results.uncategorized_samples.sort(key=lambda r: r.gap)
 
-    discard_rates = [0, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+    discard_rates = [0, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
     gap_filters: list[tuple[float, float]] = construct_gap_filters(discard_rates, initial_results, 0.02)
 
     assert len(discard_rates) == len(gap_filters)
