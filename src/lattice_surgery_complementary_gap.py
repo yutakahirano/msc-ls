@@ -622,21 +622,27 @@ def main() -> None:
     assert x_detector_for_complementary_gap is not None
     assert z_detector_for_complementary_gap is not None
 
-    initial_shots = 100_000
-    [initial_results] = perform_parallel_simulation(
-        primal_circuit,
-        partially_noiseless_circuit,
-        x_detector_for_complementary_gap,
-        z_detector_for_complementary_gap,
-        [(0, math.inf)],
-        initial_shots,
-        parallelism,
-        max_shots_per_task,
-        show_progress=False)
-    initial_results.uncategorized_samples.sort(key=lambda r: r.gap)
+    discard_rates: list[float]
+    gap_filters: list[tuple[float, float]]
 
-    discard_rates = [0, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
-    gap_filters: list[tuple[float, float]] = construct_gap_filters(discard_rates, initial_results, 0.02)
+    if full_post_selection:
+        discard_rates = [0]
+        gap_filters = [(0, 0)]
+    else:
+        initial_shots = 100_000
+        [initial_results] = perform_parallel_simulation(
+            primal_circuit,
+            partially_noiseless_circuit,
+            x_detector_for_complementary_gap,
+            z_detector_for_complementary_gap,
+            [(0, math.inf)],
+            initial_shots,
+            parallelism,
+            max_shots_per_task,
+            show_progress=False)
+        initial_results.uncategorized_samples.sort(key=lambda r: r.gap)
+        discard_rates = [0, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+        gap_filters = construct_gap_filters(discard_rates, initial_results, 0.02)
 
     assert len(discard_rates) == len(gap_filters)
     for (rate, (low, high)) in zip(discard_rates, gap_filters):
