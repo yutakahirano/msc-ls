@@ -861,16 +861,16 @@ def lattice_surgery_generator(
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
 
-    ls_surface_syndrome_measurements: list[SurfaceZSyndromeMeasurement] = [
+    ls_syndrome_measurements: list[SurfaceZSyndromeMeasurement] = [
         SurfaceZSyndromeMeasurement(circuit, (4, 6), FOUR_WEIGHT, False)
     ] + [
         SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 6), TWO_WEIGHT_DOWN, False)
         for i in range((surface_distance - 1) // 2 - 1)
     ]
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.set_post_selection(True)
     # Note that the leftmost syndrome measurement is not included in `ls_surface_syndrome_measurements`.
-    assert len(ls_surface_syndrome_measurements) == (surface_distance - 1) // 2
+    assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
     # Ancillae for 0145 syndrome measurements.
     A_0145_4 = (1, 3)  # adjacent to STEANE_4.
@@ -927,7 +927,7 @@ def lattice_surgery_generator(
 
     # Let's start lattice surgery Z syndrome measurements.
     # Surface(0)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -943,7 +943,7 @@ def lattice_surgery_generator(
 
     circuit.place_reset_z(A_1A_R)
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -958,7 +958,7 @@ def lattice_surgery_generator(
 
     circuit.place_cx(STEANE_1, A_1A_R)
     # Surface(2)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -973,7 +973,7 @@ def lattice_surgery_generator(
 
     circuit.place_cx(SURFACE_A, A_1A_R)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -989,7 +989,7 @@ def lattice_surgery_generator(
 
     left_boundary_measurement: MeasurementIdentifier = circuit.place_measurement_z(A_1A_R)
     # Surface(4)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1000,7 +1000,7 @@ def lattice_surgery_generator(
     circuit.place_cx(STEANE_2, STEANE_2_)  # Now the qubit 2 is moved back to (6, 2).
     circuit.place_reset_z(A_1A_L)
     # Surface (5); The last cycle of the first round.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         assert not m.is_complete()
         m.run()
         assert m.is_complete()
@@ -1024,7 +1024,7 @@ def lattice_surgery_generator(
     circuit.place_cx(SURFACE_A, A_1A_L)
     # We are starting the second round of the lattice surgery Z syndrome measurements.
     # Surface(0)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1042,7 +1042,7 @@ def lattice_surgery_generator(
 
     circuit.place_cx(STEANE_1, A_1A_L)
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1056,10 +1056,12 @@ def lattice_surgery_generator(
     circuit.place_cx(STEANE_2, STEANE_2_)  # An X error on STEANE_2 is copied to STEANE_2_.
 
     # The second round of the leftmost lattice surgery Z syndrome measurement.
-    circuit.place_detector([circuit.place_measurement_z(A_1A_L), left_boundary_measurement], post_selection=True)
+    prev_left_boundary_measurement = left_boundary_measurement
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
+    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
     circuit.place_reset_z(A_1A_R)
     # Surface(2)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1075,7 +1077,7 @@ def lattice_surgery_generator(
 
     circuit.place_cx(SURFACE_A, A_1A_R)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1093,7 +1095,7 @@ def lattice_surgery_generator(
 
     circuit.place_cx(STEANE_1, A_1A_R)
     # Surface(4)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1109,9 +1111,11 @@ def lattice_surgery_generator(
     m_steane_2_ = circuit.place_measurement_x(STEANE_2_)
     m_steane_4 = circuit.place_measurement_x(STEANE_4)
 
-    circuit.place_detector([circuit.place_measurement_z(A_1A_R), left_boundary_measurement], post_selection=True)
+    prev_left_boundary_measurement = left_boundary_measurement
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
+    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
     # Surface(5); The last cycle of the second round.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         assert not m.is_complete()
         m.run()
         assert m.is_complete()
@@ -1126,7 +1130,7 @@ def lattice_surgery_generator(
     m_steane_0 = circuit.place_measurement_x(STEANE_0)
     # We are starting the third round of the lattice surgery Z syndrome measurements.
     # Surface(0)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
@@ -1142,30 +1146,30 @@ def lattice_surgery_generator(
     circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
 
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
     m_steane_5 = circuit.place_measurement_x(STEANE_5)
     # Surface(2)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
     m_steane_3 = circuit.place_measurement_x(STEANE_3)
     # Surface(4)
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         m.run()
     yield
 
     # Surface(5); The last cycle of the third round.
     boundary_measurements: list[MeasurementIdentifier] = [left_boundary_measurement]
-    for m in ls_surface_syndrome_measurements:
+    for m in ls_syndrome_measurements:
         assert not m.is_complete()
         m.run()
         assert m.is_complete()
