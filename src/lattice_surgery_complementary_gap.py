@@ -135,7 +135,7 @@ class SteanePlusSurfaceCode:
         else:
             steane_code.perform_injection(circuit)
             circuit.place_tick()
-            steane_code.perform_syndrome_extraction_after_injection(circuit)
+            steane_code.perform_xz_syndrome_extraction_after_injection(circuit)
             circuit.place_tick()
 
             g = steane_code.check_generator(circuit)
@@ -173,7 +173,7 @@ class SteanePlusSurfaceCode:
             stim_circuit.append('CX', [mapping.get_id(*STEANE_6), self.z_boundary_ancilla_id])
 
         ls_results = steane_code.LatticeSurgeryMeasurements()
-        g = steane_code.lattice_surgery_generator(circuit, surface_distance, ls_results)
+        g = steane_code.lattice_surgery_generator_xzz(circuit, surface_distance, ls_results)
         performing_first_syndrome_extraction = True
 
         while True:

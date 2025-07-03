@@ -173,7 +173,7 @@ def main() -> None:
     steane_code.perform_injection(circuit)
     circuit.place_tick()
 
-    steane_code.perform_syndrome_extraction_after_injection(circuit)
+    steane_code.perform_xz_syndrome_extraction_after_injection(circuit)
     circuit.place_tick()
 
     steane_code.perform_check(circuit)

@@ -586,7 +586,7 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
             break
 
 
-def syndrome_extraction_after_injection_generator(
+def xz_syndrome_extraction_after_injection_generator(
         circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     # For 0145
     circuit.place_reset_x((1, 3))
@@ -695,8 +695,128 @@ def syndrome_extraction_after_injection_generator(
     circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
 
 
-def perform_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
-    g = syndrome_extraction_after_injection_generator(circuit)
+def perform_xz_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
+    g = xz_syndrome_extraction_after_injection_generator(circuit)
+    while True:
+        try:
+            next(g)
+            circuit.place_tick()
+        except StopIteration:
+            break
+
+
+def zx_syndrome_extraction_after_injection_generator(
+        circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
+    # For 0145
+    circuit.place_reset_x((1, 3))
+    circuit.place_reset_z((2, 4))
+    circuit.place_reset_z((1, 5))
+    # For 0235
+    circuit.place_reset_x((4, 4))
+    circuit.place_reset_z((5, 3))
+    # For 0246
+    circuit.place_reset_x((3, 1))
+    circuit.place_reset_z((4, 2))
+    circuit.place_reset_z((5, 1))
+    yield
+
+    # Entangling ancillae.
+    # For 0145
+    circuit.place_cx((0, 4), (1, 5))  # Moving the qubit 1 to (1, 5)
+    circuit.place_cx((1, 3), (2, 4))
+    # For 0235
+    circuit.place_cx((4, 4), (5, 3))
+    # For 0246
+    circuit.place_cx((3, 1), (4, 2))
+    circuit.place_cx((6, 2), (5, 1))  # Moving the qubit 2 to (5, 1).
+    yield
+
+    # CX(1)
+    # For 0145
+    circuit.place_cx((3, 5), (2, 4))
+    circuit.place_cx((0, 4), (1, 3))
+    # For 0235
+    circuit.place_cx((5, 5), (4, 4))
+    circuit.place_cx((6, 2), (5, 3))
+    # For 0246
+    circuit.place_cx((2, 0), (3, 1))
+    circuit.place_cx((3, 3), (4, 2))
+    yield
+
+    # CX(2)
+    # For 0145
+    circuit.place_cx((1, 5), (0, 4))  # Now the qubit 1 is moved to (1, 5).
+    # For 0235
+    circuit.place_cx((3, 3), (4, 4))
+    # For 0246
+    circuit.place_cx((2, 2), (3, 1))
+    circuit.place_cx((5, 1), (6, 2))  # Now the qubit 2 is moved to (5, 1).
+    yield
+
+    # CX(3)
+    # For 0145
+    circuit.place_cx((2, 2), (1, 3))
+    circuit.place_cx((3, 3), (2, 4))
+    # For 0235
+    circuit.place_cx((3, 5), (4, 4))
+    # For 0246
+    circuit.place_cx((5, 1), (4, 2))
+    circuit.place_reset_x((6, 2))
+    yield
+
+    # CX(4)
+    # For 0145
+    circuit.place_cx((1, 3), (2, 2))
+    circuit.place_cx((2, 4), (3, 3))
+    # For 0235
+    circuit.place_cx((4, 4), (3, 5))
+    # For 0246
+    circuit.place_cx((4, 2), (5, 1))
+    yield
+
+    # CX(5)
+    # For 0145
+    circuit.place_cx((2, 4), (3, 5))
+    # For 0235
+    circuit.place_cx((4, 4), (3, 3))
+    # For 0246
+    circuit.place_cx((3, 1), (2, 0))
+    circuit.place_cx((6, 2), (5, 1))  # Moving the qubit 2 back to (6, 2).
+    yield
+
+    # CX(6)
+    # For 0145
+    circuit.place_cx((2, 4), (1, 5))
+    # For 0235
+    circuit.place_cx((4, 4), (5, 5))
+    circuit.place_cx((5, 3), (6, 2))
+    # For 0246
+    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((4, 2), (3, 3))
+    yield
+
+    # Disentangling ancillae.
+    circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((4, 4), (5, 3))
+    circuit.place_cx((3, 1), (4, 2))
+    circuit.place_cx((5, 1), (6, 2))  # Now the qubit 2 is moved back to (6, 2).
+    yield
+
+    # For 0145
+    circuit.place_detector([circuit.place_measurement_x((1, 3))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((2, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((0, 4))], post_selection=True)
+    # For 0235
+    circuit.place_detector([circuit.place_measurement_x((4, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((5, 3))], post_selection=True)
+    # For 0246
+    circuit.place_detector([circuit.place_measurement_x((3, 1))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((5, 1))], post_selection=True)
+
+
+def perform_zx_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
+    g = zx_syndrome_extraction_after_injection_generator(circuit)
     while True:
         try:
             next(g)
@@ -844,7 +964,7 @@ class LatticeSurgeryMeasurements:
         return self._x_0145_measurements
 
 
-def lattice_surgery_generator(
+def lattice_surgery_generator_xzz(
         circuit: Circuit | MultiplexingCircuit,
         surface_distance: int,
         results: LatticeSurgeryMeasurements) -> Generator[None, None, None]:
@@ -1053,6 +1173,311 @@ def lattice_surgery_generator(
     # For 0246
     circuit.place_cx(A_0246_46, A_0246_02)
     circuit.place_cx(STEANE_2, STEANE_2_)  # An X error on STEANE_2 is copied to STEANE_2_.
+
+    # The second round of the leftmost lattice surgery Z syndrome measurement.
+    prev_left_boundary_measurement = left_boundary_measurement
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
+    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_reset_z(A_1A_R)
+    # Surface(2)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # CX(1)
+    # For 0145
+    circuit.place_cx(STEANE_4, A_0145_4)
+    circuit.place_cx(STEANE_1, A_0145_015)
+    # For 0235
+    circuit.place_cx(STEANE_5, A_0235_035)
+    # For 0246
+    circuit.place_cx(STEANE_6, A_0246_46)
+    circuit.place_cx(STEANE_0, A_0246_02)
+
+    circuit.place_cx(SURFACE_A, A_1A_R)
+    # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # CX(2)
+    # For 0145
+    circuit.place_cx(STEANE_5, A_0145_015)
+    # For 0235
+    circuit.place_cx(STEANE_2, A_0235_2)
+    circuit.place_cx(STEANE_0, A_0235_035)
+    # For 0246
+    circuit.place_cx(STEANE_4, A_0246_46)
+    circuit.place_cx(STEANE_2_, A_0246_02)
+
+    m_steane_6 = circuit.place_measurement_x(STEANE_6)
+
+    circuit.place_cx(STEANE_1, A_1A_R)
+    # Surface(4)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # CX(3)
+    # For 0145
+    circuit.place_cx(STEANE_0, A_0145_015)
+    # For 0235
+    circuit.place_cx(STEANE_3, A_0235_035)
+    # For 0246
+
+    m_steane_1 = circuit.place_measurement_x(STEANE_1)
+    m_steane_2 = circuit.place_measurement_x(STEANE_2)
+    m_steane_2_ = circuit.place_measurement_x(STEANE_2_)
+    m_steane_4 = circuit.place_measurement_x(STEANE_4)
+
+    prev_left_boundary_measurement = left_boundary_measurement
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
+    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    # Surface(5); The last cycle of the second round.
+    for m in ls_syndrome_measurements:
+        assert not m.is_complete()
+        m.run()
+        assert m.is_complete()
+    # Now we have second syndrome measurements.
+    yield
+
+    # Disentangling ancillae.
+    circuit.place_cx(A_0145_4, A_0145_015)
+    circuit.place_cx(A_0235_035, A_0235_2)
+    circuit.place_cx(A_0246_46, A_0246_02)
+
+    m_steane_0 = circuit.place_measurement_x(STEANE_0)
+    # We are starting the third round of the lattice surgery Z syndrome measurements.
+    # Surface(0)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Measurements:
+    # For 0145
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    # For 0235
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    # For 0246
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+
+    # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    m_steane_5 = circuit.place_measurement_x(STEANE_5)
+    # Surface(2)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    m_steane_3 = circuit.place_measurement_x(STEANE_3)
+    # Surface(4)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Surface(5); The last cycle of the third round.
+    boundary_measurements: list[MeasurementIdentifier] = [left_boundary_measurement]
+    for m in ls_syndrome_measurements:
+        assert not m.is_complete()
+        m.run()
+        assert m.is_complete()
+        assert m.last_measurement is not None
+        boundary_measurements.append(m.last_measurement)
+
+    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
+    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
+
+    results._lattice_surgery_zz_measurements = boundary_measurements
+    results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
+    results._x_0145_measurements = [m_steane_0, m_steane_1, m_steane_4, m_steane_5]
+    results._complete = True
+
+
+def lattice_surgery_generator_zz(
+        circuit: Circuit | MultiplexingCircuit,
+        surface_distance: int,
+        results: LatticeSurgeryMeasurements) -> Generator[None, None, None]:
+    # We temporarily move the qubit 2 to (5, 1).
+    STEANE_2_ = (5, 1)
+
+    # The top-left data qubit for the surface code.
+    SURFACE_A = (1, 7)
+    # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
+    A_1A_L = (0, 6)
+    A_1A_R = (2, 6)
+
+    FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
+    TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
+
+    ls_syndrome_measurements: list[SurfaceZSyndromeMeasurement] = [
+        SurfaceZSyndromeMeasurement(circuit, (4, 6), FOUR_WEIGHT, False)
+    ] + [
+        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 6), TWO_WEIGHT_DOWN, False)
+        for i in range((surface_distance - 1) // 2 - 1)
+    ]
+    for m in ls_syndrome_measurements:
+        m.set_post_selection(True)
+    # Note that the leftmost syndrome measurement is not included in `ls_surface_syndrome_measurements`.
+    assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
+
+    # Ancillae for 0145 syndrome measurements.
+    A_0145_4 = (1, 3)  # adjacent to STEANE_4.
+    A_0145_015 = (2, 4)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
+    # Ancillae for 0235 syndrome measurements.
+    A_0235_035 = (4, 4)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
+    A_0235_2 = (5, 3)  # adjacent to STEANE_2.
+    # Ancillae for 0246 syndrome measurements.
+    A_0246_46 = (3, 1)  # adjacent to STEANE_4, STEANE_6.
+    A_0246_02 = (4, 2)  # adjacent to STEANE_0, STEANE_2_.
+
+    # First, we perform X => Z superdence syndrome measurements on the Steane code.
+    # For 0145
+    circuit.place_reset_x(A_0145_4)
+    circuit.place_reset_z(A_0145_015)
+    # For 0235
+    circuit.place_reset_x(A_0235_035)
+    circuit.place_reset_z(A_0235_2)
+    # For 0246
+    circuit.place_reset_x(A_0246_46)
+    circuit.place_reset_z(A_0246_02)
+    circuit.place_reset_z(STEANE_2_)
+
+    # Let's start lattice surgery Z syndrome measurements.
+    # Surface(0)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Entangling ancillae.
+    # For 0145
+    circuit.place_cx(A_0145_4, A_0145_015)
+    # For 0235
+    circuit.place_cx(A_0235_035, A_0235_2)
+    # For 0246
+    circuit.place_cx(A_0246_46, A_0246_02)
+    circuit.place_cx(STEANE_2, STEANE_2_)  # Copying an X error on STEANE_2 to STEANE_2_.
+
+    circuit.place_reset_z(A_1A_R)
+    # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # CX(4)
+    # For 0145
+    circuit.place_cx(STEANE_4, A_0145_4)
+    circuit.place_cx(STEANE_0, A_0145_015)
+    # For 0235
+    circuit.place_cx(STEANE_5, A_0235_035)
+    # For 0246
+    circuit.place_cx(STEANE_2_, A_0246_02)
+
+    circuit.place_cx(STEANE_1, A_1A_R)
+    # Surface(2)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # CX(5)
+    # For 0145
+    circuit.place_cx(STEANE_1, A_0145_015)
+    # For 0235
+    circuit.place_cx(STEANE_0, A_0235_035)
+    # For 0246
+    circuit.place_cx(STEANE_6, A_0246_46)
+
+    circuit.place_cx(SURFACE_A, A_1A_R)
+    # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # CX(6)
+    # For 0145
+    circuit.place_cx(STEANE_5, A_0145_015)
+    # For 0235
+    circuit.place_cx(STEANE_3, A_0235_035)
+    circuit.place_cx(STEANE_2, A_0235_2)
+    # For 0246
+    circuit.place_cx(STEANE_4, A_0246_46)
+    circuit.place_cx(STEANE_0, A_0246_02)
+
+    left_boundary_measurement: MeasurementIdentifier = circuit.place_measurement_z(A_1A_R)
+    # Surface(4)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Disentangling ancillae.
+    circuit.place_cx(A_0145_4, A_0145_015)
+    circuit.place_cx(A_0235_035, A_0235_2)
+    circuit.place_cx(A_0246_46, A_0246_02)
+    circuit.place_reset_z(A_1A_L)
+    # Surface (5); The last cycle of the first round.
+    for m in ls_syndrome_measurements:
+        assert not m.is_complete()
+        m.run()
+        assert m.is_complete()
+    yield
+
+    # Measurements:
+    # For 0145
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    # For 0235
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    # For 0246
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+
+    # circuit.place_detector([circuit.place_measurement_z(STEANE_2_)], post_selection=True)
+
+    # Now we have completed the Z-X syndrome measurements on the Steane code.
+    circuit.place_cx(SURFACE_A, A_1A_L)
+    # We are starting the second round of the lattice surgery Z syndrome measurements.
+    # Surface(0)
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Let's start another Z syndrome measurement round on the Steane code.
+    # For 0145
+    circuit.place_reset_x(A_0145_4)
+    circuit.place_reset_z(A_0145_015)
+    # For 0235
+    circuit.place_reset_x(A_0235_035)
+    circuit.place_reset_z(A_0235_2)
+    # For 0246
+    circuit.place_reset_x(A_0246_46)
+    circuit.place_reset_z(A_0246_02)
+    # circuit.place_reset_z(STEANE_2_)
+
+    circuit.place_cx(STEANE_1, A_1A_L)
+    # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
+    for m in ls_syndrome_measurements:
+        m.run()
+    yield
+
+    # Entangling ancillae.
+    # For 0145
+    circuit.place_cx(A_0145_4, A_0145_015)
+    # For 0235
+    circuit.place_cx(A_0235_035, A_0235_2)
+    # For 0246
+    circuit.place_cx(A_0246_46, A_0246_02)
+    # circuit.place_cx(STEANE_2, STEANE_2_)  # An X error on STEANE_2 is copied to STEANE_2_.
 
     # The second round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement

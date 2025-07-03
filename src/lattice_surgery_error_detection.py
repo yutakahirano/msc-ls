@@ -110,7 +110,7 @@ class SteanePlusSurfaceCode:
             case InitialValue.Zero:
                 steane_code.perform_perfect_steane_zero_initialization(circuit.circuit, self.mapping)
         ls_results = steane_code.LatticeSurgeryMeasurements()
-        g = steane_code.lattice_surgery_generator(circuit, surface_distance, ls_results)
+        g = steane_code.lattice_surgery_generator_xzz(circuit, surface_distance, ls_results)
 
         tick = SURFACE_DEPTH_OFFSET
         while True:
