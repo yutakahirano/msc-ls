@@ -5,8 +5,9 @@ from lattice_surgery_error_detection import *
 
 class SteanePlusSurfaceCodeTest(unittest.TestCase):
     def test_init_distance_3(self) -> None:
+        pattern = SteaneSyndromeExtractionPattern.ZXZ
         mapping = QubitMapping(20, 20)
-        m = SteanePlusSurfaceCode(mapping, 3, InitialValue.Zero, 0, False)
+        m = SteanePlusSurfaceCode(mapping, 3, InitialValue.Zero, pattern, 0, False)
 
         ms = m.surface_syndrome_measurements
         self.assertEqual(len(ms), 8)
@@ -59,8 +60,9 @@ class SteanePlusSurfaceCodeTest(unittest.TestCase):
         self.assertFalse(ms[(4, 12)].post_selection)
 
     def test_init_post_selection(self) -> None:
+        pattern = SteaneSyndromeExtractionPattern.ZXZ
         mapping = QubitMapping(20, 20)
-        m = SteanePlusSurfaceCode(mapping, 3, InitialValue.Plus, 0, True)
+        m = SteanePlusSurfaceCode(mapping, 3, InitialValue.Plus, pattern, 0, True)
 
         for m0 in m.surface_syndrome_measurements.values():
             self.assertTrue(m0.post_selection)

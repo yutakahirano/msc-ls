@@ -21,13 +21,21 @@ class InitialValue(enum.Enum):
     Zero = auto(),
 
 
+class SteaneSyndromeExtractionPattern(enum.Enum):
+    XZZ = auto(),
+    ZXZ = auto(),
+    ZZ = auto(),
+
+
 # Representing a merged QEC code of the Steane code and the rotated surface code.
 class SteanePlusSurfaceCode:
     def __init__(self, mapping: QubitMapping, surface_distance: int, initial_value: InitialValue,
+                 steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern,
                  error_probability: float, full_post_selection: bool) -> None:
         self.mapping = mapping
         self.surface_distance = surface_distance
         self.initial_value = initial_value
+        self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
         self.error_probability = error_probability
         self.full_post_selection = full_post_selection
         self.circuit = Circuit(mapping, error_probability)
@@ -98,7 +106,14 @@ class SteanePlusSurfaceCode:
                 y = surface_offset_y + i * 2
                 circuit.place_reset_x((x, y))
 
-        SURFACE_DEPTH_OFFSET = 3
+        SURFACE_DEPTH_OFFSET: int
+        match self.steane_syndrome_extraction_pattern:
+            case SteaneSyndromeExtractionPattern.XZZ:
+                SURFACE_DEPTH_OFFSET = 3
+            case SteaneSyndromeExtractionPattern.ZXZ:
+                SURFACE_DEPTH_OFFSET = 6
+            case SteaneSyndromeExtractionPattern.ZZ:
+                SURFACE_DEPTH_OFFSET = 6
         for i in range(SURFACE_DEPTH_OFFSET):
             for m in self.surface_syndrome_measurements.values():
                 m.run()
@@ -110,7 +125,13 @@ class SteanePlusSurfaceCode:
             case InitialValue.Zero:
                 steane_code.perform_perfect_steane_zero_initialization(circuit.circuit, self.mapping)
         ls_results = steane_code.LatticeSurgeryMeasurements()
-        g = steane_code.lattice_surgery_generator_xzz(circuit, surface_distance, ls_results)
+        match self.steane_syndrome_extraction_pattern:
+            case SteaneSyndromeExtractionPattern.XZZ:
+                g = steane_code.lattice_surgery_generator_xzz(circuit, surface_distance, ls_results)
+            case SteaneSyndromeExtractionPattern.ZXZ:
+                g = steane_code.lattice_surgery_generator_zxz(circuit, surface_distance, ls_results)
+            case SteaneSyndromeExtractionPattern.ZZ:
+                g = steane_code.lattice_surgery_generator_zz(circuit, surface_distance, ls_results)
 
         tick = SURFACE_DEPTH_OFFSET
         while True:
@@ -315,6 +336,7 @@ def main() -> None:
     parser.add_argument('--parallelism', type=int, default=1)
     parser.add_argument('--surface-distance', type=int, default=3)
     parser.add_argument('--initial-value', choices=['+', '0'], default='+')
+    parser.add_argument('--steane-syndrome-extraction-pattern', choices=['XZZ', 'ZXZ', 'ZZ'], default='ZXZ')
     parser.add_argument('--perfect-initialization', action='store_true',)
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--print-circuit', action='store_true')
@@ -327,7 +349,6 @@ def main() -> None:
     print('  parallelism = {}'.format(args.parallelism))
     print('  surface-distance = {}'.format(args.surface_distance))
     print('  initial-value = {}'.format(args.initial_value))
-    print('  perfect-initialization = {}'.format(args.perfect_initialization))
     print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  print-circuit = {}'.format(args.print_circuit))
 
@@ -343,13 +364,22 @@ def main() -> None:
             initial_value = InitialValue.Zero
         case _:
             assert False
-    perfect_initialization: bool = args.perfect_initialization
+    match args.steane_syndrome_extraction_pattern:
+        case 'XZZ':
+            steane_syndrome_extraction_pattern = SteaneSyndromeExtractionPattern.XZZ
+        case 'ZXZ':
+            steane_syndrome_extraction_pattern = SteaneSyndromeExtractionPattern.ZXZ
+        case 'ZZ':
+            steane_syndrome_extraction_pattern = SteaneSyndromeExtractionPattern.ZZ
+        case _:
+            assert False
     full_post_selection: bool = args.full_post_selection
     print_circuit: bool = args.print_circuit
 
     mapping = QubitMapping(30, 30)
     r = SteanePlusSurfaceCode(
-        mapping, surface_distance, initial_value, error_probability, full_post_selection)
+        mapping, surface_distance, initial_value, steane_syndrome_extraction_pattern,
+        error_probability, full_post_selection)
     circuit = r.circuit
     stim_circuit = circuit.circuit
     r.run()
@@ -408,7 +438,7 @@ def main() -> None:
                 num_wrong += 1
 
     print('VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
-    print('WRONG / VALID = {:.3e}'.format(num_wrong / num_valid))
+    print('WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
     print('(VALID + WRONG) / SHOTS = {:.3f}'.format(
         (num_valid + num_wrong) / (num_valid + num_wrong + num_discarded)))
 
