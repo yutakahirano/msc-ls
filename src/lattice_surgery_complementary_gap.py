@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import concurrent
+import concurrent.futures
 import argparse
 import enum
 import math
 import numpy as np
 import pymatching
+import re
 import stim
 import sys
 
@@ -37,14 +39,17 @@ class SteaneSyndromeExtractionPattern(enum.Enum):
 class SteanePlusSurfaceCode:
     def __init__(self, mapping: QubitMapping, surface_distance: int, initial_value: InitialValue,
                  steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern, perfect_initialization: bool,
-                 error_probability: float, full_post_selection: bool) -> None:
+                 error_probability: float, with_heulistic_post_selection: bool,
+                 full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int) -> None:
         self.mapping = mapping
         self.surface_distance = surface_distance
         self.initial_value = initial_value
         self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
         self.perfect_initialization = perfect_initialization
         self.error_probability = error_probability
+        self.with_heulistic_post_selection = with_heulistic_post_selection
         self.full_post_selection = full_post_selection
+        self.num_epilogue_syndrome_extraction_rounds = num_epilogue_syndrome_extraction_rounds
         self.primal_circuit = Circuit(mapping, error_probability)
         self.partially_noiseless_circuit = Circuit(mapping, error_probability)
         noiseless_qubits: list[tuple[int, int]] = []
@@ -57,12 +62,7 @@ class SteanePlusSurfaceCode:
         self.surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
         self.surface_offset_x = 1
         self.surface_offset_y = 7
-        self.x_detector_for_complementary_gap: DetectorIdentifier | None = None
-        self.z_detector_for_complementary_gap: DetectorIdentifier | None = None
-        # Note that `self.circuit` does not recognize this qubit, and hence we use raw Stim APIs to access these qubits.
-        # This also means that we do not need to worry about idling noise on these qubits.
-        self.x_boundary_ancilla_id: int = 10000
-        self.z_boundary_ancilla_id: int = 20000
+        self.detector_for_complementary_gap: DetectorIdentifier | None = None
 
         self._setup_syndrome_measurements()
 
@@ -101,8 +101,12 @@ class SteanePlusSurfaceCode:
                 if i < surface_distance - 1 and j < surface_distance - 1:
                     if (i + j) % 2 == 0:
                         m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, False)
+                        if self.with_heulistic_post_selection and i < 4 and j < 5:
+                            m.set_post_selection(True)
                     else:
                         m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, True)
+                        if self.with_heulistic_post_selection and i < 4 and j < 5:
+                            m.set_post_selection(True)
                     self.surface_syndrome_measurements[(x + 1, y + 1)] = m
 
         if self.full_post_selection:
@@ -119,26 +123,6 @@ class SteanePlusSurfaceCode:
         surface_offset_y = self.surface_offset_y
 
         if self.perfect_initialization:
-            for i in range(surface_distance):
-                for j in range(surface_distance):
-                    x = surface_offset_x + j * 2
-                    y = surface_offset_y + i * 2
-                    circuit.place_reset_x((x, y))
-
-            SURFACE_DEPTH_OFFSET: int
-            match self.steane_syndrome_extraction_pattern:
-                case SteaneSyndromeExtractionPattern.XZZ:
-                    SURFACE_DEPTH_OFFSET = 3
-                case SteaneSyndromeExtractionPattern.ZXZ:
-                    SURFACE_DEPTH_OFFSET = 6
-                case SteaneSyndromeExtractionPattern.ZZ:
-                    SURFACE_DEPTH_OFFSET = 6
-
-            for i in range(SURFACE_DEPTH_OFFSET):
-                for m in self.surface_syndrome_measurements.values():
-                    m.run()
-                circuit.place_tick()
-
             for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
                 match self.initial_value:
                     case InitialValue.Plus:
@@ -147,6 +131,7 @@ class SteanePlusSurfaceCode:
                         steane_code.perform_perfect_steane_zero_initialization(stim_circuit, mapping)
                     case InitialValue.SPlus:
                         steane_code.perform_perfect_steane_s_plus_initialization(stim_circuit, mapping)
+            circuit.place_tick()
         else:
             steane_code.perform_injection(circuit)
             circuit.place_tick()
@@ -154,64 +139,29 @@ class SteanePlusSurfaceCode:
             steane_code.perform_zx_syndrome_extraction_after_injection(circuit)
             circuit.place_tick()
 
-            g = steane_code.check_generator(circuit)
-            SURFACE_SYNDROME_MEASUREMENT_OFFSET: int
-            match self.steane_syndrome_extraction_pattern:
-                case SteaneSyndromeExtractionPattern.XZZ:
-                    SURFACE_SYNDROME_MEASUREMENT_OFFSET = 9
-                case SteaneSyndromeExtractionPattern.ZXZ:
-                    SURFACE_SYNDROME_MEASUREMENT_OFFSET = 6
-                case SteaneSyndromeExtractionPattern.ZZ:
-                    SURFACE_SYNDROME_MEASUREMENT_OFFSET = 6
-            tick = 0
-            while True:
-                if tick == SURFACE_SYNDROME_MEASUREMENT_OFFSET:
-                    for i in range(surface_distance):
-                        for j in range(surface_distance):
-                            x = surface_offset_x + j * 2
-                            y = surface_offset_y + i * 2
-                            circuit.place_reset_x((x, y))
-                if tick >= SURFACE_SYNDROME_MEASUREMENT_OFFSET:
-                    for m in self.surface_syndrome_measurements.values():
-                        m.run()
-                try:
-                    next(g)
-                except StopIteration:
-                    break
-                circuit.place_tick()
-                tick += 1
-
+            steane_code.perform_check(circuit)
             circuit.place_tick()
-
-        # After the Steane code initialization, we place boundary ancillae for the complementary gap.
-        # Note that the exact timing does not matter because `partially_noiseless_circuit` assumes noise-free
-        # qubits on the Steane code region.
-        for stim_circuit in [self.primal_circuit.circuit, self.partially_noiseless_circuit.circuit]:
-            stim_circuit.append('RX', self.x_boundary_ancilla_id)
-            stim_circuit.append('CX', [self.x_boundary_ancilla_id, mapping.get_id(*STEANE_1)])
-            stim_circuit.append('CX', [self.x_boundary_ancilla_id, mapping.get_id(*STEANE_4)])
-            stim_circuit.append('CX', [self.x_boundary_ancilla_id, mapping.get_id(*STEANE_6)])
-            stim_circuit.append('R', self.z_boundary_ancilla_id)
-            stim_circuit.append('CX', [mapping.get_id(*STEANE_1), self.z_boundary_ancilla_id])
-            stim_circuit.append('CX', [mapping.get_id(*STEANE_4), self.z_boundary_ancilla_id])
-            stim_circuit.append('CX', [mapping.get_id(*STEANE_6), self.z_boundary_ancilla_id])
 
         ls_results = steane_code.LatticeSurgeryMeasurements()
         match self.steane_syndrome_extraction_pattern:
             case SteaneSyndromeExtractionPattern.XZZ:
                 g = steane_code.lattice_surgery_generator_xzz(circuit, surface_distance, ls_results)
+                SURFACE_SYNDROME_EXTRACTION_OFFSET = 3
             case SteaneSyndromeExtractionPattern.ZXZ:
                 g = steane_code.lattice_surgery_generator_zxz(circuit, surface_distance, ls_results)
+                SURFACE_SYNDROME_EXTRACTION_OFFSET = 0
             case SteaneSyndromeExtractionPattern.ZZ:
                 g = steane_code.lattice_surgery_generator_zz(circuit, surface_distance, ls_results)
-        performing_first_syndrome_extraction = True
+                SURFACE_SYNDROME_EXTRACTION_OFFSET = 0
+        tick = 0
 
         while True:
-            if performing_first_syndrome_extraction and \
-                    any([m.is_complete() for m in self.surface_syndrome_measurements.values()]):
-                assert all([m.is_complete() for m in self.surface_syndrome_measurements.values()])
-                performing_first_syndrome_extraction = False
-
+            if tick == SURFACE_SYNDROME_EXTRACTION_OFFSET:
+                for i in range(surface_distance):
+                    for j in range(surface_distance):
+                        x = surface_offset_x + j * 2
+                        y = surface_offset_y + i * 2
+                        circuit.place_reset_x((x, y))
                 # Remove the stabilizers that conflict with the lattice surgery.
                 for j in range(surface_distance):
                     x = surface_offset_x + j * 2
@@ -219,8 +169,9 @@ class SteanePlusSurfaceCode:
                     if j % 2 == 0 and j < surface_distance - 1:
                         del self.surface_syndrome_measurements[(x + 1, y - 1)]
 
-            for m in self.surface_syndrome_measurements.values():
-                m.run()
+            if tick >= SURFACE_SYNDROME_EXTRACTION_OFFSET:
+                for m in self.surface_syndrome_measurements.values():
+                    m.run()
 
             try:
                 next(g)
@@ -230,6 +181,7 @@ class SteanePlusSurfaceCode:
                 break
 
             circuit.place_tick()
+            tick += 1
 
         self.partially_noiseless_circuit.mark_qubits_as_noiseless([])
         # Let's recover and reconfigure some stabilizers.
@@ -255,36 +207,13 @@ class SteanePlusSurfaceCode:
         if not self.full_post_selection:
             for m in self.surface_syndrome_measurements.values():
                 m.set_post_selection(False)
-            # We perform one-round of syndrome measurements above.
-            # Hence, here we perform `(surface_distance - 1)` rounds of syndrome measurments.
-            for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * (surface_distance - 1)):
-                for m in self.surface_syndrome_measurements.values():
-                    m.run()
-                circuit.place_tick()
 
-        for c in [self.primal_circuit, self.partially_noiseless_circuit]:
-            stim_circuit = c.circuit
-            for j in range(surface_distance):
-                x = surface_offset_x + j * 2
-                y = surface_offset_y
-                control_id = mapping.get_id(x, y)
-                stim_circuit.append('CX', [control_id, self.z_boundary_ancilla_id])
-            stim_circuit.append('M', self.z_boundary_ancilla_id)
-            stim_circuit.append(
-                'DETECTOR',
-                [stim.target_rec(-1)] + [m.target_rec(c) for m in ls_results.lattice_surgery_zz_measurements()])
-
-            for i in range(surface_distance):
-                x = surface_offset_x
-                y = surface_offset_y + i * 2
-                target_id = mapping.get_id(x, y)
-                stim_circuit.append('CX', [self.x_boundary_ancilla_id, target_id])
-            stim_circuit.append('MX', self.x_boundary_ancilla_id)
-            stim_circuit.append(
-                'DETECTOR', [stim.target_rec(-1)] + [m.target_rec(c) for m in ls_results.logical_x_measurements()])
-        assert self.primal_circuit.circuit.num_detectors == self.partially_noiseless_circuit.circuit.num_detectors
-        self.x_detector_for_complementary_gap = DetectorIdentifier(self.primal_circuit.circuit.num_detectors - 2)
-        self.z_detector_for_complementary_gap = DetectorIdentifier(self.primal_circuit.circuit.num_detectors - 1)
+        # We perform one-round of syndrome measurements above.
+        # Hence, here we perform `(num_epilogue_syndrome_extraction_rounds - 1)` rounds of syndrome measurments.
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * (self.num_epilogue_syndrome_extraction_rounds - 1)):
+            for m in self.surface_syndrome_measurements.values():
+                m.run()
+            circuit.place_tick()
 
         # Perfect verification of the resultant state.
         with SuppressNoise(circuit):
@@ -305,6 +234,7 @@ class SteanePlusSurfaceCode:
                     ms.append(circuit.place_mpp(self._logical_y_pauli_string()))
                     ms.extend(ls_results.logical_x_measurements())
                     ms.extend(ls_results.lattice_surgery_zz_measurements())
+            self.detector_for_complementary_gap = circuit.place_detector(ms)
             circuit.place_observable_include(ms, ObservableIdentifier(0))
 
     def _logical_x_pauli_string(self) -> stim.PauliString:
@@ -383,8 +313,7 @@ def perform_simulation(
         primal_stim_circuit: stim.Circuit,
         partially_noiseless_stim_circuit: stim.Circuit,
         num_shots: int,
-        x_detector_for_complementary_gap: DetectorIdentifier,
-        z_detector_for_complementary_gap: DetectorIdentifier,
+        detector_for_complementary_gap: DetectorIdentifier,
         seed: int | None,
         detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
 
@@ -402,8 +331,7 @@ def perform_simulation(
     postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
 
     mask = np.ones_like(detection_events[0], dtype=bool)
-    mask[x_detector_for_complementary_gap.id] = False
-    mask[z_detector_for_complementary_gap.id] = False
+    mask[detector_for_complementary_gap.id] = False
 
     for shot in range(num_shots):
         syndrome = detection_events[shot]
@@ -415,7 +343,7 @@ def perform_simulation(
         min_weight = weight
         max_weight = weight
 
-        syndrome[z_detector_for_complementary_gap.id] = not syndrome[z_detector_for_complementary_gap.id]
+        syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
         try:
             c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
         except ValueError:
@@ -426,30 +354,7 @@ def perform_simulation(
         min_weight = min(min_weight, c_weight)
         max_weight = max(max_weight, c_weight)
 
-        syndrome[x_detector_for_complementary_gap.id] = not syndrome[x_detector_for_complementary_gap.id]
-        try:
-            c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
-        except ValueError:
-            c_prediction = None
-            c_weight = math.inf
-        if c_weight < min_weight:
-            prediction = c_prediction
-        min_weight = min(min_weight, c_weight)
-        max_weight = max(max_weight, c_weight)
-
-        syndrome[z_detector_for_complementary_gap.id] = not syndrome[z_detector_for_complementary_gap.id]
-
-        try:
-            c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
-        except ValueError:
-            c_prediction = None
-            c_weight = math.inf
-        if c_weight < min_weight:
-            prediction = c_prediction
-        min_weight = min(min_weight, c_weight)
-        max_weight = max(max_weight, c_weight)
-
-        syndrome[x_detector_for_complementary_gap.id] = not syndrome[x_detector_for_complementary_gap.id]
+        syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
 
         actual = observable_flips[shot]
         assert isinstance(prediction, np.ndarray)
@@ -471,8 +376,7 @@ def perform_simulation(
 def perform_parallel_simulation(
         primal_circuit: Circuit,
         partially_noiseless_circuit: Circuit,
-        x_detector_for_complementary_gap: DetectorIdentifier,
-        z_detector_for_complementary_gap: DetectorIdentifier,
+        detector_for_complementary_gap: DetectorIdentifier,
         num_shots: int,
         parallelism: int,
         num_shots_per_task: int,
@@ -482,8 +386,7 @@ def perform_parallel_simulation(
                 primal_circuit.circuit,
                 partially_noiseless_circuit.circuit,
                 num_shots,
-                x_detector_for_complementary_gap,
-                z_detector_for_complementary_gap,
+                detector_for_complementary_gap,
                 None,
                 primal_circuit.detectors_for_post_selection)
 
@@ -502,8 +405,7 @@ def perform_parallel_simulation(
                                      primal_circuit.circuit,
                                      partially_noiseless_circuit.circuit,
                                      num_shots_for_this_task,
-                                     x_detector_for_complementary_gap,
-                                     z_detector_for_complementary_gap,
+                                     detector_for_complementary_gap,
                                      seed,
                                      primal_circuit.detectors_for_post_selection)
             futures.append(future)
@@ -541,7 +443,10 @@ def main() -> None:
     parser.add_argument('--steane-syndrome-extraction-pattern', choices=['XZZ', 'ZXZ', 'ZZ'], default='ZXZ',)
     parser.add_argument('--perfect-initialization', action='store_true')
     parser.add_argument('--imperfect-initialization', action='store_true')
+    parser.add_argument('--with-heulistic-post-selection', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
+    parser.add_argument('--num-epilogue-syndrome-extraction-rounds', type=int, default=10)
+    parser.add_argument('--discard-rates', type=str, default='0')
     parser.add_argument('--print-circuit', action='store_true')
     parser.add_argument('--show-progress', action='store_true')
 
@@ -565,7 +470,10 @@ def main() -> None:
     print('  initial-value = {}'.format(args.initial_value))
     print('  steane-syndrome-extraction-pattern = {}'.format(args.steane_syndrome_extraction_pattern))
     print('  perfect-initialization = {}'.format(perfect_initialization))
+    print('  with-heulistic-post-selection = {}'.format(args.with_heulistic_post_selection))
     print('  full-post-selection = {}'.format(args.full_post_selection))
+    print('  num-epilogue-syndrome-extraction-rounds = {}'.format(args.num_epilogue_syndrome_extraction_rounds))
+    print('  discard-rates = {}'.format(args.discard_rates))
     print('  print-circuit = {}'.format(args.print_circuit))
     print('  show-progress = {}'.format(args.show_progress))
 
@@ -592,7 +500,14 @@ def main() -> None:
             steane_syndrome_extraction_pattern = SteaneSyndromeExtractionPattern.ZZ
         case _:
             assert False
+    if not re.compile(r'^\d+(\.\d+)?(,\d+(\.\d+)?)*$').match(args.discard_rates):
+        print('Error: --discard-rates must be a comma-separated list of numbers.', file=sys.stderr)
+        return
+    discard_rates = [float(x) for x in args.discard_rates.split(',')]
+
+    with_heulistic_post_selection: bool = args.with_heulistic_post_selection
     full_post_selection: bool = args.full_post_selection
+    num_epilogue_syndrome_extraction_rounds: int = args.num_epilogue_syndrome_extraction_rounds
     print_circuit: bool = args.print_circuit
     show_progress: bool = args.show_progress
 
@@ -603,7 +518,8 @@ def main() -> None:
     mapping = QubitMapping(30, 30)
     r = SteanePlusSurfaceCode(
         mapping, surface_distance, initial_value, steane_syndrome_extraction_pattern,
-        perfect_initialization, error_probability, full_post_selection)
+        perfect_initialization, error_probability, with_heulistic_post_selection, full_post_selection,
+        num_epilogue_syndrome_extraction_rounds)
     primal_circuit = r.primal_circuit
     partially_noiseless_circuit = r.partially_noiseless_circuit
     stim_circuit = primal_circuit.circuit
@@ -620,23 +536,13 @@ def main() -> None:
     if num_shots == 0:
         return
 
-    x_detector_for_complementary_gap = r.x_detector_for_complementary_gap
-    z_detector_for_complementary_gap = r.z_detector_for_complementary_gap
-    assert x_detector_for_complementary_gap is not None
-    assert z_detector_for_complementary_gap is not None
-
-    discard_rates: list[float]
-
-    if full_post_selection:
-        discard_rates = [0]
-    else:
-        discard_rates = [0, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+    detector_for_complementary_gap = r.detector_for_complementary_gap
+    assert detector_for_complementary_gap is not None
 
     results = perform_parallel_simulation(
         primal_circuit,
         partially_noiseless_circuit,
-        x_detector_for_complementary_gap,
-        z_detector_for_complementary_gap,
+        detector_for_complementary_gap,
         num_shots,
         parallelism,
         max_shots_per_task,
