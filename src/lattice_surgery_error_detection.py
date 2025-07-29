@@ -43,7 +43,7 @@ class SteanePlusSurfaceCode:
         self.surface_x_measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
         self.surface_z_measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
         self.surface_offset_x = 1
-        self.surface_offset_y = 7
+        self.surface_offset_y = 17
 
         self._setup_syndrome_measurements()
 

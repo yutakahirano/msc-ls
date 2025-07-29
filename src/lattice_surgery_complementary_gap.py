@@ -53,7 +53,7 @@ class SteanePlusSurfaceCode:
         self.primal_circuit = Circuit(mapping, error_probability)
         self.partially_noiseless_circuit = Circuit(mapping, error_probability)
         noiseless_qubits: list[tuple[int, int]] = []
-        for y in range(0, 6):
+        for y in range(0, 16):
             for x in range(0, mapping.width):
                 if (x + y) % 2 == 0:
                     noiseless_qubits.append((x, y))
@@ -61,7 +61,7 @@ class SteanePlusSurfaceCode:
         self.circuit = MultiplexingCircuit(self.primal_circuit, self.partially_noiseless_circuit)
         self.surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
         self.surface_offset_x = 1
-        self.surface_offset_y = 7
+        self.surface_offset_y = 17
         self.detector_for_complementary_gap: DetectorIdentifier | None = None
 
         self._setup_syndrome_measurements()

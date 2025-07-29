@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import concurrent
+import concurrent.futures
 import copy
 import argparse
 import math
@@ -146,9 +147,6 @@ def main() -> None:
     print('  error-probability = {}'.format(args.error_probability))
     print('  parallelism = {}'.format(args.parallelism))
     print('  max-shots-per-task = {}'.format(args.max_shots_per_task))
-    print('  intermediate-surface-distance = {}'.format(args.intermediate_surface_distance))
-    print('  final-surface-distance = {}'.format(args.final_surface_distance))
-    print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  print-circuit = {}'.format(args.print_circuit))
     print('  show-progress = {}'.format(args.show_progress))
 
@@ -156,16 +154,10 @@ def main() -> None:
     error_probability: float = args.error_probability
     parallelism: int = args.parallelism
     max_shots_per_task: int = args.max_shots_per_task
-    intermediate_surface_distance: int = args.intermediate_surface_distance
-    final_distance: int = \
-        args.final_surface_distance if args.final_surface_distance is not None else intermediate_surface_distance
-    full_post_selection: bool = args.full_post_selection
     print_circuit: bool = args.print_circuit
     show_progress: bool = args.show_progress
 
-    assert final_distance >= intermediate_surface_distance
-
-    mapping = QubitMapping(7, 7)
+    mapping = QubitMapping(7, 17)
     circuit = Circuit(mapping, error_probability)
 
     stim_circuit = circuit.circuit

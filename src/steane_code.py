@@ -9,22 +9,22 @@ from typing import Literal
 from util import Circuit, MultiplexingCircuit, QubitMapping, MeasurementIdentifier
 
 # These coordinates are hardcoded.
-STEANE_0 = (3, 3)
-STEANE_1 = (1, 5)
-STEANE_2 = (6, 2)
-STEANE_3 = (5, 5)
-STEANE_4 = (2, 2)
-STEANE_5 = (3, 5)
-STEANE_6 = (2, 0)
+STEANE_0 = (3, 13)
+STEANE_1 = (1, 15)
+STEANE_2 = (6, 12)
+STEANE_3 = (5, 15)
+STEANE_4 = (2, 12)
+STEANE_5 = (3, 15)
+STEANE_6 = (2, 10)
 
 # Qubit coordinates after the injection stage.
-STEANE_0_INJECTION = (3, 3)
-STEANE_1_INJECTION = (0, 4)
-STEANE_2_INJECTION = (6, 2)
-STEANE_3_INJECTION = (5, 5)
-STEANE_4_INJECTION = (2, 2)
-STEANE_5_INJECTION = (3, 5)
-STEANE_6_INJECTION = (2, 0)
+STEANE_0_INJECTION = (3, 13)
+STEANE_1_INJECTION = (0, 14)
+STEANE_2_INJECTION = (6, 12)
+STEANE_3_INJECTION = (5, 15)
+STEANE_4_INJECTION = (2, 12)
+STEANE_5_INJECTION = (3, 15)
+STEANE_6_INJECTION = (2, 10)
 
 
 class SteaneZ0145SyndromeMeasurement:
@@ -98,8 +98,8 @@ class SteaneZ0145SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        ancilla_a = (1, 3)
-        ancilla_b = (2, 4)
+        ancilla_a = (1, 13)
+        ancilla_b = (2, 14)
 
         if not self.has_initialized_ancillae:
             if circuit.is_tainted_by_position(*ancilla_a) or circuit.is_tainted_by_position(*ancilla_b):
@@ -227,8 +227,8 @@ class SteaneZ0235SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        ancilla_a = (5, 3)
-        ancilla_b = (4, 4)
+        ancilla_a = (5, 13)
+        ancilla_b = (4, 14)
 
         if not self.has_initialized_ancillae:
             if circuit.is_tainted_by_position(*ancilla_a) or circuit.is_tainted_by_position(*ancilla_b):
@@ -346,9 +346,9 @@ class SteaneZ0246SyndromeMeasurement:
     def run(self) -> bool:
         assert not self.has_measured_ancillae
         circuit = self.circuit
-        ancilla_a = (4, 2)
-        ancilla_b = (3, 1)
-        ancilla_c = (5, 1)
+        ancilla_a = (4, 12)
+        ancilla_b = (3, 11)
+        ancilla_c = (5, 11)
 
         if not self.has_initialized_ancillae:
             if circuit.is_tainted_by_position(*ancilla_a) or circuit.is_tainted_by_position(*ancilla_b) or\
@@ -495,85 +495,85 @@ def perform_perfect_steane_s_plus_initialization(stim_circuit: stim.Circuit, map
 def injection_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     # TICK 0
     # Reset qubits 0, 2, 5 and their peers.
-    circuit.place_reset_x((5, 3))
-    circuit.place_reset_x((3, 3))
-    circuit.place_reset_x((3, 5))
-    circuit.place_reset_z((4, 2))
-    circuit.place_reset_z((4, 4))
-    circuit.place_reset_z((2, 4))
+    circuit.place_reset_x((5, 13))
+    circuit.place_reset_x((3, 13))
+    circuit.place_reset_x((3, 15))
+    circuit.place_reset_z((4, 12))
+    circuit.place_reset_z((4, 14))
+    circuit.place_reset_z((2, 14))
     yield
 
     # TICK 1
-    circuit.place_cx((5, 3), (4, 2))
-    circuit.place_cx((3, 3), (4, 4))
-    circuit.place_cx((3, 5), (2, 4))
+    circuit.place_cx((5, 13), (4, 12))
+    circuit.place_cx((3, 13), (4, 14))
+    circuit.place_cx((3, 15), (2, 14))
     yield
 
     # TICK 2
-    circuit.place_cx((5, 3), (4, 4))
-    circuit.place_cx((3, 3), (2, 4))
-    circuit.place_reset_x((1, 3))
-    circuit.place_reset_x((6, 2))
+    circuit.place_cx((5, 13), (4, 14))
+    circuit.place_cx((3, 13), (2, 14))
+    circuit.place_reset_x((1, 13))
+    circuit.place_reset_x((6, 12))
     yield
 
     # TICK 3
-    circuit.place_cx((3, 3), (4, 2))
-    circuit.place_cx((3, 5), (4, 4))
-    circuit.place_cx((1, 3), (2, 4))
-    circuit.place_cx((6, 2), (5, 3))
+    circuit.place_cx((3, 13), (4, 12))
+    circuit.place_cx((3, 15), (4, 14))
+    circuit.place_cx((1, 13), (2, 14))
+    circuit.place_cx((6, 12), (5, 13))
 
-    circuit.place_reset_x((3, 1))
-    circuit.place_reset_x((5, 5))
-    circuit.place_reset_x((2, 2))
+    circuit.place_reset_x((3, 11))
+    circuit.place_reset_x((5, 15))
+    circuit.place_reset_x((2, 12))
     yield
 
     # TICK 4
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((5, 5), (4, 4))
-    circuit.place_cx((2, 2), (1, 3))
-    circuit.place_cx((5, 3), (6, 2))
+    circuit.place_cx((3, 11), (4, 12))
+    circuit.place_cx((5, 15), (4, 14))
+    circuit.place_cx((2, 12), (1, 13))
+    circuit.place_cx((5, 13), (6, 12))
     yield
 
     # TICK 5
-    circuit.place_cx((2, 2), (3, 1))
-    circuit.place_cx((4, 4), (5, 5))
-    circuit.place_cx((2, 4), (1, 3))
+    circuit.place_cx((2, 12), (3, 11))
+    circuit.place_cx((4, 14), (5, 15))
+    circuit.place_cx((2, 14), (1, 13))
 
-    circuit.place_reset_x((6, 4))
+    circuit.place_reset_x((6, 14))
     yield
 
     # TICK 6
-    circuit.place_cx((4, 2), (3, 1))
-    circuit.place_cx((1, 3), (2, 2))
+    circuit.place_cx((4, 12), (3, 11))
+    circuit.place_cx((1, 13), (2, 12))
     yield
 
     # TICK 7
-    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((3, 11), (2, 12))
     yield
 
     # TICK 8
-    circuit.place_single_qubit_gate('S_DAG', (2, 2))
+    circuit.place_single_qubit_gate('S_DAG', (2, 12))
     yield
 
     # TICK 9
-    circuit.place_cx((3, 1), (2, 2))
+    circuit.place_cx((3, 11), (2, 12))
     yield
 
     # TICK 10
-    circuit.place_cx((1, 3), (2, 2))
+    circuit.place_cx((1, 13), (2, 12))
 
-    circuit.place_reset_x((2, 0))
-    circuit.place_reset_x((0, 4))
+    circuit.place_reset_x((2, 10))
+    circuit.place_reset_x((0, 14))
     yield
 
     # TICK 11
-    circuit.place_cx((2, 0), (3, 1))
-    circuit.place_cx((0, 4), (1, 3))
+    circuit.place_cx((2, 10), (3, 11))
+    circuit.place_cx((0, 14), (1, 13))
     yield
 
     # TICK 12
-    circuit.place_cx((3, 1), (2, 0))
-    circuit.place_cx((1, 3), (0, 4))
+    circuit.place_cx((3, 11), (2, 10))
+    circuit.place_cx((1, 13), (0, 14))
 
 
 def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -589,110 +589,110 @@ def perform_injection(circuit: Circuit | MultiplexingCircuit) -> None:
 def xz_syndrome_extraction_after_injection_generator(
         circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     # For 0145
-    circuit.place_reset_x((1, 3))
-    circuit.place_reset_z((2, 4))
-    circuit.place_reset_z((1, 5))
+    circuit.place_reset_x((1, 13))
+    circuit.place_reset_z((2, 14))
+    circuit.place_reset_z((1, 15))
     # For 0235
-    circuit.place_reset_x((4, 4))
-    circuit.place_reset_z((5, 3))
+    circuit.place_reset_x((4, 14))
+    circuit.place_reset_z((5, 13))
     # For 0246
-    circuit.place_reset_x((3, 1))
-    circuit.place_reset_z((4, 2))
-    circuit.place_reset_x((5, 1))
+    circuit.place_reset_x((3, 11))
+    circuit.place_reset_z((4, 12))
+    circuit.place_reset_x((5, 11))
     yield
 
     # Entangling ancillae.
     # For 0145
-    circuit.place_cx((0, 4), (1, 5))
-    circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((0, 14), (1, 15))
+    circuit.place_cx((1, 13), (2, 14))
     # For 0235
-    circuit.place_cx((4, 4), (5, 3))
+    circuit.place_cx((4, 14), (5, 13))
     # For 0246
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((5, 1), (6, 2))  # Moving the qubit 2 to (5, 1).
+    circuit.place_cx((3, 11), (4, 12))
+    circuit.place_cx((5, 11), (6, 12))  # Moving the qubit 2 to (5, 11).
     yield
 
     # CX(1)
     # For 0145
-    circuit.place_cx((2, 4), (3, 5))
-    circuit.place_cx((1, 5), (0, 4))
+    circuit.place_cx((2, 14), (3, 15))
+    circuit.place_cx((1, 15), (0, 14))
     # For 0235
-    circuit.place_cx((4, 4), (5, 5))
-    circuit.place_cx((5, 3), (6, 2))
+    circuit.place_cx((4, 14), (5, 15))
+    circuit.place_cx((5, 13), (6, 12))
     # For 0246
-    circuit.place_cx((3, 1), (2, 0))
-    circuit.place_cx((4, 2), (3, 3))
+    circuit.place_cx((3, 11), (2, 10))
+    circuit.place_cx((4, 12), (3, 13))
     yield
 
     # CX(2)
     # For 0145
-    circuit.place_cx((2, 4), (1, 5))
+    circuit.place_cx((2, 14), (1, 15))
     # For 0235
-    circuit.place_cx((4, 4), (3, 3))
+    circuit.place_cx((4, 14), (3, 13))
     # For 0246
-    circuit.place_cx((3, 1), (2, 2))
-    circuit.place_cx((6, 2), (5, 1))  # Now the qubit 2 is moved to (5, 1).
+    circuit.place_cx((3, 11), (2, 12))
+    circuit.place_cx((6, 12), (5, 11))  # Now the qubit 2 is moved to (5, 11).
     yield
 
     # CX(3)
     # For 0145
-    circuit.place_cx((1, 3), (2, 2))
-    circuit.place_cx((2, 4), (3, 3))
+    circuit.place_cx((1, 13), (2, 12))
+    circuit.place_cx((2, 14), (3, 13))
     # For 0235
-    circuit.place_cx((4, 4), (3, 5))
+    circuit.place_cx((4, 14), (3, 15))
     # For 0246
-    circuit.place_cx((4, 2), (5, 1))
-    circuit.place_reset_z((6, 2))
+    circuit.place_cx((4, 12), (5, 11))
+    circuit.place_reset_z((6, 12))
     yield
 
     # CX(4)
     # For 0145
-    circuit.place_cx((2, 2), (1, 3))
-    circuit.place_cx((3, 3), (2, 4))
+    circuit.place_cx((2, 12), (1, 13))
+    circuit.place_cx((3, 13), (2, 14))
     # For 0235
-    circuit.place_cx((3, 5), (4, 4))
+    circuit.place_cx((3, 15), (4, 14))
     # For 0246
-    circuit.place_cx((5, 1), (4, 2))
+    circuit.place_cx((5, 11), (4, 12))
     yield
 
     # CX(5)
     # For 0145
-    circuit.place_cx((3, 5), (2, 4))
+    circuit.place_cx((3, 15), (2, 14))
     # For 0235
-    circuit.place_cx((3, 3), (4, 4))
+    circuit.place_cx((3, 13), (4, 14))
     # For 0246
-    circuit.place_cx((2, 0), (3, 1))
-    circuit.place_cx((5, 1), (6, 2))  # Moving the qubit 2 back to (6, 2).
+    circuit.place_cx((2, 10), (3, 11))
+    circuit.place_cx((5, 11), (6, 12))  # Moving the qubit 2 back to (6, 12).
     yield
 
     # CX(6)
     # For 0145
-    circuit.place_cx((1, 5), (2, 4))
+    circuit.place_cx((1, 15), (2, 14))
     # For 0235
-    circuit.place_cx((5, 5), (4, 4))
-    circuit.place_cx((6, 2), (5, 3))
+    circuit.place_cx((5, 15), (4, 14))
+    circuit.place_cx((6, 12), (5, 13))
     # For 0246
-    circuit.place_cx((2, 2), (3, 1))
-    circuit.place_cx((3, 3), (4, 2))
+    circuit.place_cx((2, 12), (3, 11))
+    circuit.place_cx((3, 13), (4, 12))
     yield
 
     # Disentangling ancillae.
-    circuit.place_cx((1, 3), (2, 4))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((6, 2), (5, 1))  # Now the qubit 2 is moved back to (6, 2).
+    circuit.place_cx((1, 13), (2, 14))
+    circuit.place_cx((4, 14), (5, 13))
+    circuit.place_cx((3, 11), (4, 12))
+    circuit.place_cx((6, 12), (5, 11))  # Now the qubit 2 is moved back to (6, 12).
     yield
 
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x((1, 3))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((2, 4))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((0, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((1, 13))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((2, 14))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((0, 14))], post_selection=True)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x((4, 4))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((5, 3))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((4, 14))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((5, 13))], post_selection=True)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x((3, 1))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((3, 11))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((4, 12))], post_selection=True)
 
 
 def perform_xz_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -708,111 +708,111 @@ def perform_xz_syndrome_extraction_after_injection(circuit: Circuit | Multiplexi
 def zx_syndrome_extraction_after_injection_generator(
         circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
     # For 0145
-    circuit.place_reset_x((1, 3))
-    circuit.place_reset_z((2, 4))
-    circuit.place_reset_z((1, 5))
+    circuit.place_reset_x((1, 13))
+    circuit.place_reset_z((2, 14))
+    circuit.place_reset_z((1, 15))
     # For 0235
-    circuit.place_reset_x((4, 4))
-    circuit.place_reset_z((5, 3))
+    circuit.place_reset_x((4, 14))
+    circuit.place_reset_z((5, 13))
     # For 0246
-    circuit.place_reset_x((3, 1))
-    circuit.place_reset_z((4, 2))
-    circuit.place_reset_z((5, 1))
+    circuit.place_reset_x((3, 11))
+    circuit.place_reset_z((4, 12))
+    circuit.place_reset_z((5, 11))
     yield
 
     # Entangling ancillae.
     # For 0145
-    circuit.place_cx((0, 4), (1, 5))  # Moving the qubit 1 to (1, 5)
-    circuit.place_cx((1, 3), (2, 4))
+    circuit.place_cx((0, 14), (1, 15))  # Moving the qubit 1 to (1, 15)
+    circuit.place_cx((1, 13), (2, 14))
     # For 0235
-    circuit.place_cx((4, 4), (5, 3))
+    circuit.place_cx((4, 14), (5, 13))
     # For 0246
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((6, 2), (5, 1))  # Moving the qubit 2 to (5, 1).
+    circuit.place_cx((3, 11), (4, 12))
+    circuit.place_cx((6, 12), (5, 11))  # Moving the qubit 2 to (5, 11).
     yield
 
     # CX(1)
     # For 0145
-    circuit.place_cx((3, 5), (2, 4))
-    circuit.place_cx((0, 4), (1, 3))
+    circuit.place_cx((3, 15), (2, 14))
+    circuit.place_cx((0, 14), (1, 13))
     # For 0235
-    circuit.place_cx((5, 5), (4, 4))
-    circuit.place_cx((6, 2), (5, 3))
+    circuit.place_cx((5, 15), (4, 14))
+    circuit.place_cx((6, 12), (5, 13))
     # For 0246
-    circuit.place_cx((2, 0), (3, 1))
-    circuit.place_cx((3, 3), (4, 2))
+    circuit.place_cx((2, 10), (3, 11))
+    circuit.place_cx((3, 13), (4, 12))
     yield
 
     # CX(2)
     # For 0145
-    circuit.place_cx((1, 5), (0, 4))  # Now the qubit 1 is moved to (1, 5).
+    circuit.place_cx((1, 15), (0, 14))  # Now the qubit 1 is moved to (1, 15).
     # For 0235
-    circuit.place_cx((3, 3), (4, 4))
+    circuit.place_cx((3, 13), (4, 14))
     # For 0246
-    circuit.place_cx((2, 2), (3, 1))
-    circuit.place_cx((5, 1), (6, 2))  # Now the qubit 2 is moved to (5, 1).
+    circuit.place_cx((2, 12), (3, 11))
+    circuit.place_cx((5, 11), (6, 12))  # Now the qubit 2 is moved to (5, 11).
     yield
 
     # CX(3)
     # For 0145
-    circuit.place_cx((2, 2), (1, 3))
-    circuit.place_cx((3, 3), (2, 4))
+    circuit.place_cx((2, 12), (1, 13))
+    circuit.place_cx((3, 13), (2, 14))
     # For 0235
-    circuit.place_cx((3, 5), (4, 4))
+    circuit.place_cx((3, 15), (4, 14))
     # For 0246
-    circuit.place_cx((5, 1), (4, 2))
-    circuit.place_reset_x((6, 2))
+    circuit.place_cx((5, 11), (4, 12))
+    circuit.place_reset_x((6, 12))
     yield
 
     # CX(4)
     # For 0145
-    circuit.place_cx((1, 3), (2, 2))
-    circuit.place_cx((2, 4), (3, 3))
+    circuit.place_cx((1, 13), (2, 12))
+    circuit.place_cx((2, 14), (3, 13))
     # For 0235
-    circuit.place_cx((4, 4), (3, 5))
+    circuit.place_cx((4, 14), (3, 15))
     # For 0246
-    circuit.place_cx((4, 2), (5, 1))
+    circuit.place_cx((4, 12), (5, 11))
     yield
 
     # CX(5)
     # For 0145
-    circuit.place_cx((2, 4), (3, 5))
+    circuit.place_cx((2, 14), (3, 15))
     # For 0235
-    circuit.place_cx((4, 4), (3, 3))
+    circuit.place_cx((4, 14), (3, 13))
     # For 0246
-    circuit.place_cx((3, 1), (2, 0))
-    circuit.place_cx((6, 2), (5, 1))  # Moving the qubit 2 back to (6, 2).
+    circuit.place_cx((3, 11), (2, 10))
+    circuit.place_cx((6, 12), (5, 11))  # Moving the qubit 2 back to (6, 12).
     yield
 
     # CX(6)
     # For 0145
-    circuit.place_cx((2, 4), (1, 5))
+    circuit.place_cx((2, 14), (1, 15))
     # For 0235
-    circuit.place_cx((4, 4), (5, 5))
-    circuit.place_cx((5, 3), (6, 2))
+    circuit.place_cx((4, 14), (5, 15))
+    circuit.place_cx((5, 13), (6, 12))
     # For 0246
-    circuit.place_cx((3, 1), (2, 2))
-    circuit.place_cx((4, 2), (3, 3))
+    circuit.place_cx((3, 11), (2, 12))
+    circuit.place_cx((4, 12), (3, 13))
     yield
 
     # Disentangling ancillae.
-    circuit.place_cx((1, 3), (2, 4))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((3, 1), (4, 2))
-    circuit.place_cx((5, 1), (6, 2))  # Now the qubit 2 is moved back to (6, 2).
+    circuit.place_cx((1, 13), (2, 14))
+    circuit.place_cx((4, 14), (5, 13))
+    circuit.place_cx((3, 11), (4, 12))
+    circuit.place_cx((5, 11), (6, 12))  # Now the qubit 2 is moved back to (6, 12).
     yield
 
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x((1, 3))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((2, 4))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((0, 4))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((1, 13))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((2, 14))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((0, 14))], post_selection=True)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x((4, 4))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((5, 3))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((4, 14))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((5, 13))], post_selection=True)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x((3, 1))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((4, 2))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_x((5, 1))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((3, 11))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z((4, 12))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((5, 11))], post_selection=True)
 
 
 def perform_zx_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -826,12 +826,12 @@ def perform_zx_syndrome_extraction_after_injection(circuit: Circuit | Multiplexi
 
 
 def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, None, None]:
-    circuit.place_reset_x((3, 1))
-    circuit.place_reset_x((4, 2))
-    circuit.place_reset_x((5, 3))
-    circuit.place_reset_x((4, 4))
-    circuit.place_reset_x((1, 3))
-    circuit.place_reset_x((2, 4))
+    circuit.place_reset_x((3, 11))
+    circuit.place_reset_x((4, 12))
+    circuit.place_reset_x((5, 13))
+    circuit.place_reset_x((4, 14))
+    circuit.place_reset_x((1, 13))
+    circuit.place_reset_x((2, 14))
     circuit.place_single_qubit_gate('S_DAG', STEANE_0)
     circuit.place_single_qubit_gate('S_DAG', STEANE_1)
     circuit.place_single_qubit_gate('S_DAG', STEANE_2)
@@ -841,51 +841,51 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_single_qubit_gate('S_DAG', STEANE_6)
     yield
 
-    circuit.place_cx((3, 1), (2, 0))
-    circuit.place_cx((4, 2), (3, 3))
-    circuit.place_cx((5, 3), (6, 2))
-    circuit.place_cx((4, 4), (5, 5))
-    circuit.place_cx((1, 3), (2, 2))
-    circuit.place_cx((2, 4), (1, 5))
+    circuit.place_cx((3, 11), (2, 10))
+    circuit.place_cx((4, 12), (3, 13))
+    circuit.place_cx((5, 13), (6, 12))
+    circuit.place_cx((4, 14), (5, 15))
+    circuit.place_cx((1, 13), (2, 12))
+    circuit.place_cx((2, 14), (1, 15))
     yield
 
-    circuit.place_cx((2, 2), (3, 1))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((3, 3), (2, 4))
+    circuit.place_cx((2, 12), (3, 11))
+    circuit.place_cx((4, 14), (5, 13))
+    circuit.place_cx((3, 13), (2, 14))
     yield
 
-    circuit.place_cx((3, 3), (2, 2))
-    circuit.place_cx((4, 4), (3, 5))
+    circuit.place_cx((3, 13), (2, 12))
+    circuit.place_cx((4, 14), (3, 15))
     yield
 
-    circuit.place_cx((3, 3), (4, 4))
+    circuit.place_cx((3, 13), (4, 14))
     yield
 
-    m = circuit.place_measurement_x((3, 3))
+    m = circuit.place_measurement_x((3, 13))
     circuit.place_detector([m], post_selection=True)
     yield
 
-    circuit.place_reset_x((3, 3))
+    circuit.place_reset_x((3, 13))
     yield
 
-    circuit.place_cx((3, 3), (4, 4))
+    circuit.place_cx((3, 13), (4, 14))
     yield
 
-    circuit.place_cx((3, 3), (2, 2))
-    circuit.place_cx((4, 4), (3, 5))
+    circuit.place_cx((3, 13), (2, 12))
+    circuit.place_cx((4, 14), (3, 15))
     yield
 
-    circuit.place_cx((2, 2), (3, 1))
-    circuit.place_cx((4, 4), (5, 3))
-    circuit.place_cx((3, 3), (2, 4))
+    circuit.place_cx((2, 12), (3, 11))
+    circuit.place_cx((4, 14), (5, 13))
+    circuit.place_cx((3, 13), (2, 14))
     yield
 
-    circuit.place_cx((3, 1), (2, 0))
-    circuit.place_cx((4, 2), (3, 3))
-    circuit.place_cx((5, 3), (6, 2))
-    circuit.place_cx((4, 4), (5, 5))
-    circuit.place_cx((1, 3), (2, 2))
-    circuit.place_cx((2, 4), (1, 5))
+    circuit.place_cx((3, 11), (2, 10))
+    circuit.place_cx((4, 12), (3, 13))
+    circuit.place_cx((5, 13), (6, 12))
+    circuit.place_cx((4, 14), (5, 15))
+    circuit.place_cx((1, 13), (2, 12))
+    circuit.place_cx((2, 14), (1, 15))
     yield
 
     circuit.place_single_qubit_gate('S', STEANE_0)
@@ -896,7 +896,7 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     circuit.place_single_qubit_gate('S', STEANE_5)
     circuit.place_single_qubit_gate('S', STEANE_6)
 
-    for pos in [(3, 1), (4, 2), (5, 3), (4, 4), (1, 3), (2, 4)]:
+    for pos in [(3, 11), (4, 12), (5, 13), (4, 14), (1, 13), (2, 14)]:
         m = circuit.place_measurement_x(pos)
         circuit.place_detector([m], post_selection=True)
 
@@ -968,22 +968,22 @@ def lattice_surgery_generator_xzz(
         circuit: Circuit | MultiplexingCircuit,
         surface_distance: int,
         results: LatticeSurgeryMeasurements) -> Generator[None, None, None]:
-    # We temporarily move the qubit 2 to (5, 1).
-    STEANE_2_ = (5, 1)
+    # We temporarily move the qubit 2 to (5, 11).
+    STEANE_2_ = (5, 11)
 
     # The top-left data qubit for the surface code.
-    SURFACE_A = (1, 7)
+    SURFACE_A = (1, 17)
     # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
-    A_1A_L = (0, 6)
-    A_1A_R = (2, 6)
+    A_1A_L = (0, 16)
+    A_1A_R = (2, 16)
 
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
 
     ls_syndrome_measurements: list[SurfaceZSyndromeMeasurement] = [
-        SurfaceZSyndromeMeasurement(circuit, (4, 6), FOUR_WEIGHT, False)
+        SurfaceZSyndromeMeasurement(circuit, (4, 16), FOUR_WEIGHT, False)
     ] + [
-        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 6), TWO_WEIGHT_DOWN, False)
+        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 16), TWO_WEIGHT_DOWN, False)
         for i in range((surface_distance - 1) // 2 - 1)
     ]
     for m in ls_syndrome_measurements:
@@ -992,14 +992,14 @@ def lattice_surgery_generator_xzz(
     assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
     # Ancillae for 0145 syndrome measurements.
-    A_0145_4 = (1, 3)  # adjacent to STEANE_4.
-    A_0145_015 = (2, 4)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
+    A_0145_4 = (1, 13)  # adjacent to STEANE_4.
+    A_0145_015 = (2, 14)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
     # Ancillae for 0235 syndrome measurements.
-    A_0235_035 = (4, 4)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
-    A_0235_2 = (5, 3)  # adjacent to STEANE_2.
+    A_0235_035 = (4, 14)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
+    A_0235_2 = (5, 13)  # adjacent to STEANE_2.
     # Ancillae for 0246 syndrome measurements.
-    A_0246_46 = (3, 1)  # adjacent to STEANE_4, STEANE_6.
-    A_0246_02 = (4, 2)  # adjacent to STEANE_0, STEANE_2_.
+    A_0246_46 = (3, 11)  # adjacent to STEANE_4, STEANE_6.
+    A_0246_02 = (4, 12)  # adjacent to STEANE_0, STEANE_2_.
 
     # First, we perform X => Z superdence syndrome measurements on the Steane code.
     # For 0145
@@ -1021,7 +1021,7 @@ def lattice_surgery_generator_xzz(
     circuit.place_cx(A_0235_035, A_0235_2)
     # For 0246
     circuit.place_cx(A_0246_46, A_0246_02)
-    circuit.place_cx(STEANE_2_, STEANE_2)  # Moving the qubit 2 to (5, 1).
+    circuit.place_cx(STEANE_2_, STEANE_2)  # Moving the qubit 2 to (5, 11).
     yield
 
     # CX(1)
@@ -1042,7 +1042,7 @@ def lattice_surgery_generator_xzz(
     # For 0246
     circuit.place_cx(A_0246_46, STEANE_4)
     circuit.place_cx(A_0246_02, STEANE_0)
-    circuit.place_cx(STEANE_2, STEANE_2_)  # Now the qubit 2 is moved to (5, 1).
+    circuit.place_cx(STEANE_2, STEANE_2_)  # Now the qubit 2 is moved to (5, 11).
 
     # Let's start lattice surgery Z syndrome measurements.
     # Surface(0)
@@ -1088,7 +1088,7 @@ def lattice_surgery_generator_xzz(
     circuit.place_cx(STEANE_0, A_0235_035)
     # For 0246
     circuit.place_cx(STEANE_6, A_0246_46)
-    circuit.place_cx(STEANE_2_, STEANE_2)  # Moving the qubit 2 back to (6, 2).
+    circuit.place_cx(STEANE_2_, STEANE_2)  # Moving the qubit 2 back to (6, 12).
 
     circuit.place_cx(SURFACE_A, A_1A_R)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
@@ -1116,7 +1116,7 @@ def lattice_surgery_generator_xzz(
     circuit.place_cx(A_0145_4, A_0145_015)
     circuit.place_cx(A_0235_035, A_0235_2)
     circuit.place_cx(A_0246_46, A_0246_02)
-    circuit.place_cx(STEANE_2, STEANE_2_)  # Now the qubit 2 is moved back to (6, 2).
+    circuit.place_cx(STEANE_2, STEANE_2_)  # Now the qubit 2 is moved back to (6, 12).
     circuit.place_reset_z(A_1A_L)
     # Surface (5); The last cycle of the first round.
     for m in ls_syndrome_measurements:
@@ -1311,22 +1311,22 @@ def lattice_surgery_generator_zxz(
     # Note that we don't perform the X0145 syndrome measurement here, because it anticommutes with Z1A and Z35BC
     # stabilizers.
 
-    # We temporarily move the qubit 2 to (5, 1).
-    STEANE_2_ = (5, 1)
+    # We temporarily move the qubit 2 to (5, 11).
+    STEANE_2_ = (5, 11)
 
     # The top-left data qubit for the surface code.
-    SURFACE_A = (1, 7)
+    SURFACE_A = (1, 17)
     # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
-    A_1A_L = (0, 6)
-    A_1A_R = (2, 6)
+    A_1A_L = (0, 16)
+    A_1A_R = (2, 16)
 
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
 
     ls_syndrome_measurements: list[SurfaceZSyndromeMeasurement] = [
-        SurfaceZSyndromeMeasurement(circuit, (4, 6), FOUR_WEIGHT, False)
+        SurfaceZSyndromeMeasurement(circuit, (4, 16), FOUR_WEIGHT, False)
     ] + [
-        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 6), TWO_WEIGHT_DOWN, False)
+        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 16), TWO_WEIGHT_DOWN, False)
         for i in range((surface_distance - 1) // 2 - 1)
     ]
     for m in ls_syndrome_measurements:
@@ -1335,14 +1335,14 @@ def lattice_surgery_generator_zxz(
     assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
     # Ancillae for 0145 syndrome measurements.
-    A_0145_4 = (1, 3)  # adjacent to STEANE_4.
-    A_0145_015 = (2, 4)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
+    A_0145_4 = (1, 13)  # adjacent to STEANE_4.
+    A_0145_015 = (2, 14)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
     # Ancillae for 0235 syndrome measurements.
-    A_0235_035 = (4, 4)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
-    A_0235_2 = (5, 3)  # adjacent to STEANE_2.
+    A_0235_035 = (4, 14)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
+    A_0235_2 = (5, 13)  # adjacent to STEANE_2.
     # Ancillae for 0246 syndrome measurements.
-    A_0246_46 = (3, 1)  # adjacent to STEANE_4, STEANE_6.
-    A_0246_02 = (4, 2)  # adjacent to STEANE_0, STEANE_2_.
+    A_0246_46 = (3, 11)  # adjacent to STEANE_4, STEANE_6.
+    A_0246_02 = (4, 12)  # adjacent to STEANE_0, STEANE_2_.
 
     # First, we perform Z => X superdence syndrome measurements (except for X0145) on the Steane code.
     # For 0145
@@ -1369,7 +1369,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0235_035, A_0235_2)
     # For 0246
     circuit.place_cx(A_0246_46, A_0246_02)
-    circuit.place_cx(STEANE_2, STEANE_2_)  # Moving the qubit 2 to (5, 1).
+    circuit.place_cx(STEANE_2, STEANE_2_)  # Moving the qubit 2 to (5, 11).
 
     circuit.place_reset_z(A_1A_R)
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
@@ -1400,7 +1400,7 @@ def lattice_surgery_generator_zxz(
     # For 0246
     circuit.place_cx(STEANE_4, A_0246_46)
     circuit.place_cx(STEANE_0, A_0246_02)
-    circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved to (5, 1).
+    circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved to (5, 11).
 
     circuit.place_cx(SURFACE_A, A_1A_R)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
@@ -1451,7 +1451,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0235_035, STEANE_0)
     # For 0246
     circuit.place_cx(A_0246_46, STEANE_6)
-    circuit.place_cx(STEANE_2, STEANE_2_)  # Moving the qubit 2 back to (6, 2).
+    circuit.place_cx(STEANE_2, STEANE_2_)  # Moving the qubit 2 back to (6, 12).
 
     # We are starting the second round of the lattice surgery Z syndrome measurements.
     # Surface(0)
@@ -1483,7 +1483,7 @@ def lattice_surgery_generator_zxz(
     # Disentangling ancillae.
     circuit.place_cx(A_0235_035, A_0235_2)
     circuit.place_cx(A_0246_46, A_0246_02)
-    circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved back to (6, 2).
+    circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved back to (6, 12).
 
     circuit.place_cx(STEANE_1, A_1A_L)
     # Surface(2)
@@ -1661,22 +1661,22 @@ def lattice_surgery_generator_zz(
         circuit: Circuit | MultiplexingCircuit,
         surface_distance: int,
         results: LatticeSurgeryMeasurements) -> Generator[None, None, None]:
-    # We temporarily move the qubit 2 to (5, 1).
-    STEANE_2_ = (5, 1)
+    # We temporarily move the qubit 2 to (5, 11).
+    STEANE_2_ = (5, 11)
 
     # The top-left data qubit for the surface code.
-    SURFACE_A = (1, 7)
+    SURFACE_A = (1, 17)
     # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
-    A_1A_L = (0, 6)
-    A_1A_R = (2, 6)
+    A_1A_L = (0, 16)
+    A_1A_R = (2, 16)
 
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
 
     ls_syndrome_measurements: list[SurfaceZSyndromeMeasurement] = [
-        SurfaceZSyndromeMeasurement(circuit, (4, 6), FOUR_WEIGHT, False)
+        SurfaceZSyndromeMeasurement(circuit, (4, 16), FOUR_WEIGHT, False)
     ] + [
-        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 6), TWO_WEIGHT_DOWN, False)
+        SurfaceZSyndromeMeasurement(circuit, (8 + 4 * i, 16), TWO_WEIGHT_DOWN, False)
         for i in range((surface_distance - 1) // 2 - 1)
     ]
     for m in ls_syndrome_measurements:
@@ -1685,14 +1685,14 @@ def lattice_surgery_generator_zz(
     assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
     # Ancillae for 0145 syndrome measurements.
-    A_0145_4 = (1, 3)  # adjacent to STEANE_4.
-    A_0145_015 = (2, 4)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
+    A_0145_4 = (1, 13)  # adjacent to STEANE_4.
+    A_0145_015 = (2, 14)  # adjacent to STEANE_0, STEANE_1, STEANE_5.
     # Ancillae for 0235 syndrome measurements.
-    A_0235_035 = (4, 4)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
-    A_0235_2 = (5, 3)  # adjacent to STEANE_2.
+    A_0235_035 = (4, 14)  # adjacent to STEANE_0, STEANE_3, STEANE_5.
+    A_0235_2 = (5, 13)  # adjacent to STEANE_2.
     # Ancillae for 0246 syndrome measurements.
-    A_0246_46 = (3, 1)  # adjacent to STEANE_4, STEANE_6.
-    A_0246_02 = (4, 2)  # adjacent to STEANE_0, STEANE_2_.
+    A_0246_46 = (3, 11)  # adjacent to STEANE_4, STEANE_6.
+    A_0246_02 = (4, 12)  # adjacent to STEANE_0, STEANE_2_.
 
     # First, we perform X => Z superdence syndrome measurements on the Steane code.
     # For 0145

@@ -9,12 +9,12 @@ from util import QubitMapping, Circuit, DetectorIdentifier
 
 class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
     def test_run(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_1), 102)
-        self.assertEqual(mapping.get_id(*STEANE_4), 11)
-        self.assertEqual(mapping.get_id(*STEANE_5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_1), 157)
+        self.assertEqual(mapping.get_id(*STEANE_4), 21)
+        self.assertEqual(mapping.get_id(*STEANE_5), 172)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -32,8 +32,8 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.has_measured_ancillae)
 
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12''')
+        RX 156
+        R 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         b = m.run()
@@ -59,10 +59,10 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12''')
+        CX 156 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -84,12 +84,12 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 102 12 11 101''')
+        CX 157 22 21 156''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -111,14 +111,14 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 102 12 11 101
+        CX 157 22 21 156
         TICK
-        CX 112 12''')
+        CX 172 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -140,16 +140,16 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 102 12 11 101
+        CX 157 22 21 156
         TICK
-        CX 112 12
+        CX 172 22
         TICK
-        CX 111 12''')
+        CX 171 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -171,18 +171,18 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 102 12 11 101
+        CX 157 22 21 156
         TICK
-        CX 112 12
+        CX 172 22
         TICK
-        CX 111 12
+        CX 171 22
         TICK
-        CX 101 12''')
+        CX 156 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -204,33 +204,33 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 102 12 11 101
+        CX 157 22 21 156
         TICK
-        CX 112 12
+        CX 172 22
         TICK
-        CX 111 12
+        CX 171 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        MX 101
+        MX 156
         DETECTOR rec[-1]
-        M 12
+        M 22
         DETECTOR rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(0), DetectorIdentifier(1)])
 
     def test_lock_1(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_1), 102)
-        self.assertEqual(mapping.get_id(*STEANE_4), 11)
-        self.assertEqual(mapping.get_id(*STEANE_5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_1), 157)
+        self.assertEqual(mapping.get_id(*STEANE_4), 21)
+        self.assertEqual(mapping.get_id(*STEANE_5), 172)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -348,26 +348,26 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 11 101 112 12
+        CX 21 156 172 22
         TICK
-        CX 111 12
+        CX 171 22
         TICK
         TICK
-        CX 102 12''')
+        CX 157 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
     def test_lock_5(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_1), 102)
-        self.assertEqual(mapping.get_id(*STEANE_4), 11)
-        self.assertEqual(mapping.get_id(*STEANE_5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_1), 157)
+        self.assertEqual(mapping.get_id(*STEANE_4), 21)
+        self.assertEqual(mapping.get_id(*STEANE_5), 172)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -485,28 +485,28 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 101
-        R 12
+        RX 156
+        R 22
         TICK
-        CX 101 12
+        CX 156 22
         TICK
-        CX 102 12 11 101
+        CX 157 22 21 156
         TICK
-        CX 111 12
+        CX 171 22
         TICK
         TICK
-        CX 112 12''')
+        CX 172 22''')
         self.assertEqual(str(circuit.circuit), expectation)
 
 
 class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
     def test_run(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_2), 31)
-        self.assertEqual(mapping.get_id(*STEANE_3), 122)
-        self.assertEqual(mapping.get_id(*STEANE_5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_2), 51)
+        self.assertEqual(mapping.get_id(*STEANE_3), 187)
+        self.assertEqual(mapping.get_id(*STEANE_5), 172)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -530,8 +530,8 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22''')
+        RX 186
+        R 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         b = m.run()
@@ -557,10 +557,10 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertFalse(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22''')
+        CX 186 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -582,12 +582,12 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 112 22 31 121''')
+        CX 172 37 51 186''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -609,14 +609,14 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 112 22 31 121
+        CX 172 37 51 186
         TICK
-        CX 122 22''')
+        CX 187 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -638,16 +638,16 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 112 22 31 121
+        CX 172 37 51 186
         TICK
-        CX 122 22
+        CX 187 37
         TICK
-        CX 111 22''')
+        CX 171 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -669,18 +669,18 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 112 22 31 121
+        CX 172 37 51 186
         TICK
-        CX 122 22
+        CX 187 37
         TICK
-        CX 111 22
+        CX 171 37
         TICK
-        CX 121 22''')
+        CX 186 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -702,33 +702,33 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 112 22 31 121
+        CX 172 37 51 186
         TICK
-        CX 122 22
+        CX 187 37
         TICK
-        CX 111 22
+        CX 171 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        MX 121
+        MX 186
         DETECTOR rec[-1]
-        M 22
+        M 37
         DETECTOR rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(0), DetectorIdentifier(1)])
 
     def test_lock_qubit_3(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_2), 31)
-        self.assertEqual(mapping.get_id(*STEANE_3), 122)
-        self.assertEqual(mapping.get_id(*STEANE_5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_2), 51)
+        self.assertEqual(mapping.get_id(*STEANE_3), 187)
+        self.assertEqual(mapping.get_id(*STEANE_5), 172)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -851,26 +851,26 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 112 22 31 121
+        CX 172 37 51 186
         TICK
-        CX 111 22
+        CX 171 37
         TICK
         TICK
-        CX 122 22''')
+        CX 187 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
     def test_lock_qubit_5(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_2), 31)
-        self.assertEqual(mapping.get_id(*STEANE_3), 122)
-        self.assertEqual(mapping.get_id(*STEANE_5), 112)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_2), 51)
+        self.assertEqual(mapping.get_id(*STEANE_3), 187)
+        self.assertEqual(mapping.get_id(*STEANE_5), 172)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -993,28 +993,28 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        RX 121
-        R 22
+        RX 186
+        R 37
         TICK
-        CX 121 22
+        CX 186 37
         TICK
-        CX 122 22 31 121
+        CX 187 37 51 186
         TICK
-        CX 111 22
+        CX 171 37
         TICK
         TICK
-        CX 112 22''')
+        CX 172 37''')
         self.assertEqual(str(circuit.circuit), expectation)
 
 
 class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
     def test_run(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
 
-        self.assertEqual(mapping.get_id(*STEANE_0), 111)
-        self.assertEqual(mapping.get_id(*STEANE_2), 31)
-        self.assertEqual(mapping.get_id(*STEANE_4), 11)
-        self.assertEqual(mapping.get_id(*STEANE_6), 10)
+        self.assertEqual(mapping.get_id(*STEANE_0), 171)
+        self.assertEqual(mapping.get_id(*STEANE_2), 51)
+        self.assertEqual(mapping.get_id(*STEANE_4), 21)
+        self.assertEqual(mapping.get_id(*STEANE_6), 20)
 
         circuit = Circuit(mapping, 0)
         prologue = str(circuit.circuit)
@@ -1040,15 +1040,15 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertFalse(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120''')
+        R 36
+        RX 170 185''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         b = m.run()
         self.assertFalse(b)
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120''')
+        R 36
+        RX 170 185''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1072,10 +1072,10 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertFalse(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120
+        R 36
+        RX 170 185
         TICK
-        CX 110 21''')
+        CX 170 36''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1099,12 +1099,12 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertFalse(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120
+        R 36
+        RX 170 185
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21 11 110''')
+        CX 185 36 21 170''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1128,14 +1128,14 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120
+        R 36
+        RX 170 185
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21 11 110
+        CX 185 36 21 170
         TICK
-        CX 111 21 31 120 10 110''')
+        CX 171 36 51 185 20 170''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1159,16 +1159,16 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120
+        R 36
+        RX 170 185
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21 11 110
+        CX 185 36 21 170
         TICK
-        CX 111 21 31 120 10 110
+        CX 171 36 51 185 20 170
         TICK
-        CX 110 21''')
+        CX 170 36''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1192,18 +1192,18 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120
+        R 36
+        RX 170 185
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21 11 110
+        CX 185 36 21 170
         TICK
-        CX 111 21 31 120 10 110
+        CX 171 36 51 185 20 170
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21''')
+        CX 185 36''')
         self.assertEqual(str(circuit.circuit), expectation)
 
         circuit.place_tick()
@@ -1227,24 +1227,24 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         self.assertTrue(m.is_done_with_qubit_5())
         self.assertTrue(m.is_done_with_qubit_6())
         expectation = prologue + textwrap.dedent(f'''
-        R 21
-        RX 110 120
+        R 36
+        RX 170 185
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21 11 110
+        CX 185 36 21 170
         TICK
-        CX 111 21 31 120 10 110
+        CX 171 36 51 185 20 170
         TICK
-        CX 110 21
+        CX 170 36
         TICK
-        CX 120 21
+        CX 185 36
         TICK
-        M 21
+        M 36
         DETECTOR rec[-1]
-        MX 110
+        MX 170
         DETECTOR rec[-1]
-        MX 120
+        MX 185
         DETECTOR rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [
@@ -1254,7 +1254,7 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
 
 class SteaneInitializationTest(unittest.TestCase):
     def test_plus(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         stim_circuit = stim.Circuit()
 
         perform_perfect_steane_plus_initialization(stim_circuit, mapping)
@@ -1271,7 +1271,7 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_zero(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         stim_circuit = stim.Circuit()
 
         perform_perfect_steane_zero_initialization(stim_circuit, mapping)
@@ -1288,7 +1288,7 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_s_plus(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         stim_circuit = stim.Circuit()
 
         perform_perfect_steane_s_plus_initialization(stim_circuit, mapping)
@@ -1305,7 +1305,7 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_injection(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
 
@@ -1323,7 +1323,7 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_xz_syndrome_extraction_after_injection(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
 
@@ -1345,7 +1345,7 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_zx_syndrome_extraction_after_injection(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
 
@@ -1367,7 +1367,7 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_check(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
 
@@ -1444,13 +1444,13 @@ class SteaneInitializationTest(unittest.TestCase):
                 del surface_syndrome_measurements[(x + 1, y - 1)]
 
     def test_lattice_surgery_xzz_plus(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
         surface_distance = 5
         results = LatticeSurgeryMeasurements()
         surface_offset_x = 1
-        surface_offset_y = 7
+        surface_offset_y = 17
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
 
         TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1514,13 +1514,13 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_lattice_surgery_xzz_zero(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
         surface_distance = 5
         results = LatticeSurgeryMeasurements()
         surface_offset_x = 1
-        surface_offset_y = 7
+        surface_offset_y = 17
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
 
         TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1584,13 +1584,13 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_lattice_surgery_zz_plus(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
         surface_distance = 5
         results = LatticeSurgeryMeasurements()
         surface_offset_x = 1
-        surface_offset_y = 7
+        surface_offset_y = 17
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
 
         TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1652,13 +1652,13 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_lattice_surgery_zz_zero(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
         surface_distance = 5
         results = LatticeSurgeryMeasurements()
         surface_offset_x = 1
-        surface_offset_y = 7
+        surface_offset_y = 17
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
 
         TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1720,13 +1720,13 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_lattice_surgery_zxz_plus(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
         surface_distance = 5
         results = LatticeSurgeryMeasurements()
         surface_offset_x = 1
-        surface_offset_y = 7
+        surface_offset_y = 17
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
 
         TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1788,13 +1788,13 @@ class SteaneInitializationTest(unittest.TestCase):
         stim_circuit.detector_error_model()
 
     def test_lattice_surgery_zxz_zero(self) -> None:
-        mapping = QubitMapping(20, 20)
+        mapping = QubitMapping(20, 30)
         circuit = Circuit(mapping, 0)
         stim_circuit = circuit.circuit
         surface_distance = 5
         results = LatticeSurgeryMeasurements()
         surface_offset_x = 1
-        surface_offset_y = 7
+        surface_offset_y = 17
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
 
         TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
