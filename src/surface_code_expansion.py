@@ -29,16 +29,12 @@ class SurfaceCodePatch:
         self.distance2 = distance2
         self.rounds_for_gap = rounds_for_gap
         self.syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
-        # Note that `self.circuit` does not recognize this qubit, and hence we use raw Stim APIs to access this qubit.
-        # This also means that we do not need to worry about idling noise on the qubit.
-        self.boundary_ancilla_id: int = 10000
         self.detector_for_complementary_gap: DetectorIdentifier | None = None
         self.offset = (1, 1)
 
     def _setup_initial_state(self) -> None:
         m: SurfaceSyndromeMeasurement
         circuit = self.circuit
-        stim_circuit = circuit.circuit
         distance1 = self.distance1
         (offset_x, offset_y) = self.offset
 
@@ -76,16 +72,6 @@ class SurfaceCodePatch:
                 for m in self.syndrome_measurements.values():
                     m.run()
                 circuit.place_tick()
-
-            stim_circuit.append('QUBIT_COORDS', self.boundary_ancilla_id, (2, -1))
-            stim_circuit.append('R', self.boundary_ancilla_id)
-            stim_circuit.append('TICK')
-            for j in range(distance1):
-                x = offset_x + j * 2
-                y = offset_y
-                control_id = circuit.mapping.get_id(x, y)
-                stim_circuit.append('CX', [control_id, self.boundary_ancilla_id])
-                stim_circuit.append('TICK')
 
     def _perform_code_expansion(self) -> None:
         distance1 = self.distance1
@@ -161,20 +147,8 @@ class SurfaceCodePatch:
         distance2 = self.distance2
         circuit = self.circuit
         (offset_x, offset_y) = self.offset
-        syndrome_measurements = self.syndrome_measurements
 
         with SuppressNoise(circuit):
-            stim_circuit = circuit.circuit
-            for j in range(distance2):
-                x = offset_x + j * 2
-                y = offset_y
-                control_id = circuit.mapping.get_id(x, y)
-                stim_circuit.append('CX', [control_id, self.boundary_ancilla_id])
-            stim_circuit.append('M', self.boundary_ancilla_id)
-            stim_circuit.append('DETECTOR', stim.target_rec(-1))
-            self.detector_for_complementary_gap = DetectorIdentifier(stim_circuit.num_detectors - 1)
-            stim_circuit.append('TICK')
-
             measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
             last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
                 pos: m.last_measurement for (pos, m) in self.syndrome_measurements.items()
@@ -212,7 +186,8 @@ class SurfaceCodePatch:
                             last
                         ])
             zs = [measurements[(offset_x + j * 2, offset_y)] for j in range(distance2)]
-            circuit.place_observable_include(zs, ObservableIdentifier(0))
+            circuit.place_observable_include(zs)
+            self.detector_for_complementary_gap = circuit.place_detector(zs)
 
     def _push(self, m: SurfaceSyndromeMeasurement) -> None:
         position = m.ancilla_position
