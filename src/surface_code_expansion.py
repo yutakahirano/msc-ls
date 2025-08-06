@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import enum
 import math
 import numpy as np
 import pymatching
@@ -21,8 +22,14 @@ TWO_WEIGHT_LEFT = SurfaceStabilizerPattern.TWO_WEIGHT_LEFT
 TWO_WEIGHT_RIGHT = SurfaceStabilizerPattern.TWO_WEIGHT_RIGHT
 
 
+class ExpansionPattern(enum.Enum):
+    DOWNWARD = enum.auto(),
+    UPWARD = enum.auto(),
+
+
 class SurfaceCodePatch:
-    def __init__(self, circuit: Circuit, distance1: int, distance2: int, rounds_for_gap: int) -> None:
+    def __init__(self, circuit: Circuit,
+                 distance1: int, distance2: int, rounds_for_gap: int, pattern: ExpansionPattern) -> None:
         assert distance1 <= distance2
         self.circuit = circuit
         self.distance1 = distance1
@@ -30,7 +37,12 @@ class SurfaceCodePatch:
         self.rounds_for_gap = rounds_for_gap
         self.syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
         self.detector_for_complementary_gap: DetectorIdentifier | None = None
-        self.offset = (1, 1)
+        self.pattern = pattern
+        match pattern:
+            case ExpansionPattern.DOWNWARD:
+                self.offset = (1, 1)
+            case ExpansionPattern.UPWARD:
+                self.offset = (1, 1 + 2 * (distance2 - distance1))
 
     def _setup_initial_state(self) -> None:
         m: SurfaceSyndromeMeasurement
@@ -73,15 +85,83 @@ class SurfaceCodePatch:
                     m.run()
                 circuit.place_tick()
 
-    def _perform_code_expansion(self) -> None:
+    def _setup_syndrome_measurements_upward(self) -> None:
         distance1 = self.distance1
         distance2 = self.distance2
         circuit = self.circuit
+
         (offset_x, offset_y) = self.offset
         syndrome_measurements = self.syndrome_measurements
 
-        if distance1 == distance2:
-            return
+        for i in range(distance2):
+            for j in range(distance2):
+                m: SurfaceSyndromeMeasurement
+                x = offset_x + j * 2
+                y = offset_y + i * 2
+
+                # Initialize data qubits:
+                if j < distance1 and i >= distance2 - distance1:
+                    pass
+                elif i + j < distance2 - 1:
+                    circuit.place_reset_x((x, y))
+                else:
+                    circuit.place_reset_z((x, y))
+
+                # Weight-two syndrome measurements:
+                if i == 0 and j % 2 == 0 and j < distance2 - 1:
+                    self._push(SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, True))
+                if i == distance2 - 1 and j % 2 == 1 and distance1 - 1 <= j and j < distance2 - 1:
+                    self._push(SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_UP, False))
+                if j == 0 and i % 2 == 1 and i < (distance2 - distance1):
+                    self._push(SurfaceZSyndromeMeasurement(circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, False))
+                if j == distance2 - 1 and i % 2 == 0 and i < distance2 - 1:
+                    self._push(SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_LEFT, True))
+
+                # Weight-four syndrome measurements:
+                if i >= distance2 - 1 or j >= distance2 - 1:
+                    continue
+                if i >= distance2 - distance1 and j < distance1 - 1:
+                    continue
+
+                last_measurement: MeasurementIdentifier | None = None
+                if (i + j) % 2 == 0:
+                    satisfied = i + j >= distance2 - 1
+                    if (x + 1, y + 1) in syndrome_measurements:
+                        assert j == distance1 - 1
+                        assert satisfied
+                        m = syndrome_measurements[(x + 1), (y + 1)]
+                        del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceZSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_LEFT
+                        last_measurement = m.last_measurement
+                        assert last_measurement is not None
+                        satisfied = False
+                    m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                    m.last_measurement = last_measurement
+                    self._push(m)
+                else:
+                    satisfied = i + j < distance2 - 2
+                    if (x + 1, y + 1) in syndrome_measurements:
+                        assert i == distance2 - distance1 - 1
+                        assert satisfied
+                        m = syndrome_measurements[(x + 1), (y + 1)]
+                        del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceXSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_DOWN
+                        last_measurement = m.last_measurement
+                        assert last_measurement is not None
+                        satisfied = False
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                    m.last_measurement = last_measurement
+                    self._push(m)
+
+    def _setup_syndrome_measurements_downward(self) -> None:
+        distance1 = self.distance1
+        distance2 = self.distance2
+        circuit = self.circuit
+
+        (offset_x, offset_y) = self.offset
+        syndrome_measurements = self.syndrome_measurements
 
         for i in range(distance2):
             for j in range(distance2):
@@ -124,6 +204,7 @@ class SurfaceCodePatch:
                         assert isinstance(m, SurfaceZSyndromeMeasurement)
                         assert m.pattern == TWO_WEIGHT_LEFT
                         last_measurement = m.last_measurement
+                        satisfied = False
                     m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
                     m.last_measurement = last_measurement
                     self._push(m)
@@ -137,55 +218,50 @@ class SurfaceCodePatch:
                         assert isinstance(m, SurfaceXSyndromeMeasurement)
                         assert m.pattern == TWO_WEIGHT_UP
                         last_measurement = m.last_measurement
+                        satisfied = False
                     m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
                     m.last_measurement = last_measurement
                     self._push(m)
 
-        assert len(syndrome_measurements) == distance2 * distance2 - 1
+    def _perform_code_expansion(self) -> None:
+        if self.distance1 == self.distance2:
+            return
 
-    def _perform_destructive_z_measurement(self) -> None:
+        match self.pattern:
+            case ExpansionPattern.DOWNWARD:
+                self._setup_syndrome_measurements_downward()
+            case ExpansionPattern.UPWARD:
+                (offset_x, offset_y) = self.offset
+                self.offset = (offset_x, offset_y - 2 * (self.distance2 - self.distance1))
+                (offset_x, offset_y) = self.offset
+                self._setup_syndrome_measurements_upward()
+
+        assert len(self.syndrome_measurements) == self.distance2 * self.distance2 - 1
+
+    def _perform_logical_z_measurement(self) -> None:
         distance2 = self.distance2
         circuit = self.circuit
         (offset_x, offset_y) = self.offset
 
         with SuppressNoise(circuit):
-            measurements: dict[tuple[int, int], MeasurementIdentifier] = {}
-            last_measurements: dict[tuple[int, int], MeasurementIdentifier | None] = {
-                pos: m.last_measurement for (pos, m) in self.syndrome_measurements.items()
-            }
-            for i in range(distance2):
-                for j in range(distance2):
-                    x = offset_x + j * 2
-                    y = offset_y + i * 2
-                    measurements[(x, y)] = circuit.place_measurement_z((x, y))
+            for _ in range(TICKS_FOR_SYNDROME_MEASUREMENT * 2):
+                for m in self.syndrome_measurements.values():
+                    m.run()
+                circuit.place_tick()
 
-            for i in range(distance2):
-                for j in range(distance2):
-                    x = offset_x + j * 2
-                    y = offset_y + i * 2
-
-                    # Weight-two syndrome measurements:
-                    if j == 0 and i % 2 == 1 and i < distance2 - 1:
-                        last = last_measurements[(x - 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last])
-                    if j == distance2 - 1 and i % 2 == 0 and i < distance2 - 1:
-                        last = last_measurements[(x + 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([measurements[(x, y)], measurements[(x, y + 2)], last])
-
-                    # Weight-four syndrome measurements:
-                    if i < distance2 - 1 and j < distance2 - 1 and (i + j) % 2 == 0:
-                        last = last_measurements[(x + 1, y + 1)]
-                        assert last is not None
-                        circuit.place_detector([
-                            measurements[(x, y)],
-                            measurements[(x + 2, y)],
-                            measurements[(x, y + 2)],
-                            measurements[(x + 2, y + 2)],
-                            last
-                        ])
-            zs = [measurements[(offset_x + j * 2, offset_y)] for j in range(distance2)]
+            pauli_string = stim.PauliString()
+            match self.pattern:
+                case ExpansionPattern.DOWNWARD:
+                    for j in range(distance2):
+                        x = offset_x + j * 2
+                        y = offset_y
+                        pauli_string *= stim.PauliString('Z{}'.format(circuit.mapping.get_id(x, y)))
+                case ExpansionPattern.UPWARD:
+                    for j in range(distance2):
+                        x = offset_x + j * 2
+                        y = offset_y + (distance2 - 1) * 2
+                        pauli_string *= stim.PauliString('Z{}'.format(circuit.mapping.get_id(x, y)))
+            zs = [circuit.place_mpp(pauli_string)]
             circuit.place_observable_include(zs)
             self.detector_for_complementary_gap = circuit.place_detector(zs)
 
@@ -202,7 +278,7 @@ class SurfaceCodePatch:
                 m.run()
             self.circuit.place_tick()
 
-        self._perform_destructive_z_measurement()
+        self._perform_logical_z_measurement()
 
 
 class UncategorizedSample:
@@ -389,6 +465,7 @@ def main() -> None:
     parser.add_argument('--max-shots-per-task', type=int, default=2 ** 20)
     parser.add_argument('--distance1', type=int, default=3)
     parser.add_argument('--distance2', type=int, default=7)
+    parser.add_argument('--expansion-pattern', type=str, choices=list(['UPWARD', 'DOWNWARD']), default='DOWNWARD')
     parser.add_argument('--threshold-gap', type=float)
     parser.add_argument('--rounds-for-gap', type=int, default=7)
     parser.add_argument('--show-progress', action='store_true')
@@ -402,6 +479,7 @@ def main() -> None:
     print('  max-shots-per-task = {}'.format(args.max_shots_per_task))
     print('  distance1 = {}'.format(args.distance1))
     print('  distance2 = {}'.format(args.distance2))
+    print('  expansion-pattern = {}'.format(args.expansion_pattern))
     print('  threshold-gap = {}'.format(args.threshold_gap))
     print('  rounds-for-gap = {}'.format(args.rounds_for_gap))
     print('  show-progress = {}'.format(args.show_progress))
@@ -413,6 +491,14 @@ def main() -> None:
     max_shots_per_task: int = args.max_shots_per_task
     distance1: int = args.distance1
     distance2: int = args.distance2
+    expansion_pattern: ExpansionPattern = args.expansion_pattern
+    match args.expansion_pattern:
+        case 'UPWARD':
+            expansion_pattern = ExpansionPattern.UPWARD
+        case 'DOWNWARD':
+            expansion_pattern = ExpansionPattern.DOWNWARD
+        case _:
+            raise ValueError(f'Invalid expansion pattern: {args.expansion_pattern}')
     threshold_gap: float | None = args.threshold_gap
     rounds_for_gap: int = args.rounds_for_gap
     show_progress: bool = args.show_progress
@@ -420,15 +506,20 @@ def main() -> None:
 
     mapping = QubitMapping(30, 30)
     circuit = Circuit(mapping, error_probability)
-    patch = SurfaceCodePatch(circuit, distance1, distance2, rounds_for_gap)
+    patch = SurfaceCodePatch(circuit, distance1, distance2, rounds_for_gap, expansion_pattern)
 
     patch.build()
 
-    detector_for_complementary_gap = patch.detector_for_complementary_gap
-    assert detector_for_complementary_gap is not None
-
     if print_circuit:
         print(circuit.circuit)
+
+    # Assert that the circuit has deterministic observables.
+    _ = circuit.circuit.detector_error_model()
+    # Assert that the circuit has a graph-like dem.
+    _ = circuit.circuit.detector_error_model(decompose_errors=True)
+
+    detector_for_complementary_gap = patch.detector_for_complementary_gap
+    assert detector_for_complementary_gap is not None
 
     if num_shots == 0:
         return
