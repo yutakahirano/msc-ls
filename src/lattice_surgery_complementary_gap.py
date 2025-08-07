@@ -504,6 +504,7 @@ def main() -> None:
         print('Error: --discard-rates must be a comma-separated list of numbers.', file=sys.stderr)
         return
     discard_rates = [float(x) for x in args.discard_rates.split(',')]
+    discard_rates.sort()
 
     with_heulistic_post_selection: bool = args.with_heulistic_post_selection
     full_post_selection: bool = args.full_post_selection
@@ -554,20 +555,36 @@ def main() -> None:
     num_wrong = sum([b.num_wrong_samples for b in results.buckets])
     bucket_index = 0
     for rate in discard_rates:
-        while num_discarded < round(num_samples * rate) and bucket_index < len(results.buckets):
+        while True:
             bucket = results.buckets[bucket_index]
+            if num_discarded + bucket.num_valid_samples + bucket.num_wrong_samples >= num_samples * rate:
+                break
+
             num_valid -= bucket.num_valid_samples
             num_wrong -= bucket.num_wrong_samples
             num_discarded += bucket.num_valid_samples + bucket.num_wrong_samples
             bucket_index += 1
 
+        v = num_valid
+        w = num_wrong
+        d = num_discarded
+        num_to_be_discarded_additionally = num_samples * rate - num_discarded
+        if num_to_be_discarded_additionally >= 0:
+            assert num_to_be_discarded_additionally <= bucket.num_valid_samples + bucket.num_wrong_samples
+            bucket_valid_rate = bucket.num_valid_samples / (bucket.num_valid_samples + bucket.num_wrong_samples)
+            bucket_wrong_rate = 1 - bucket_valid_rate
+            v -= round(num_to_be_discarded_additionally * bucket_valid_rate)
+            w -= round(num_to_be_discarded_additionally * bucket_wrong_rate)
+            assert abs(v + w + d + num_to_be_discarded_additionally - num_samples) < 3
+            d = num_samples - v - w
+
         print('Discard {:.1f}% samples, VALID = {}, WRONG = {}, DISCARDED = {}, bucket_index = {}'.format(
-            rate * 100, num_valid, num_wrong, num_discarded, bucket_index))
+            rate * 100, v, w, d, bucket_index))
         if num_valid + num_wrong == 0:
             print('WRONG / (VALID + WRONG) = nan')
         else:
-            print('WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
-        print('(VALID + WRONG) / SHOTS = {:.3f}'.format((num_valid + num_wrong) / num_samples))
+            print('WRONG / (VALID + WRONG) = {:.3e}'.format(w / (v + w)))
+        print('(VALID + WRONG) / SHOTS = {:.3f}'.format((v + w) / num_samples))
         print()
 
 
