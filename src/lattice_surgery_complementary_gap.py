@@ -37,12 +37,15 @@ class SteaneSyndromeExtractionPattern(enum.Enum):
 
 # Representing a merged QEC code of the Steane code and the rotated surface code.
 class SteanePlusSurfaceCode:
-    def __init__(self, mapping: QubitMapping, surface_distance: int, initial_value: InitialValue,
-                 steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern, perfect_initialization: bool,
+    def __init__(self, mapping: QubitMapping, surface_intermediate_distance: int, surface_final_distance: int,
+                 initial_value: InitialValue, steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern,
+                 perfect_initialization: bool,
                  error_probability: float, with_heulistic_post_selection: bool,
                  full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int) -> None:
         self.mapping = mapping
-        self.surface_distance = surface_distance
+        self.surface_intermediate_distance = surface_intermediate_distance
+        self.surface_distance = surface_intermediate_distance
+        self.surface_final_distance = surface_final_distance
         self.initial_value = initial_value
         self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
         self.perfect_initialization = perfect_initialization
@@ -112,6 +115,222 @@ class SteanePlusSurfaceCode:
         if self.full_post_selection:
             for m in self.surface_syndrome_measurements.values():
                 m.set_post_selection(True)
+
+    def _prepare_qubits_for_code_expansion_upward(self) -> None:
+        if self.surface_intermediate_distance == self.surface_final_distance:
+            return
+
+        surface_distance = self.surface_distance
+        surface_offset_x = self.surface_offset_x
+        surface_offset_y = self.surface_offset_y
+        circuit = self.circuit
+
+        intermediate_distance = self.surface_intermediate_distance
+        final_distance = self.surface_final_distance
+        assert final_distance == surface_distance
+
+        for i in range(surface_distance):
+            for j in range(surface_distance):
+                x = surface_offset_x + j * 2
+                y = surface_offset_y + i * 2
+
+                # Initialize data qubits:
+                if j < intermediate_distance and i >= final_distance - intermediate_distance:
+                    pass
+                elif i + j < final_distance - 1:
+                    circuit.place_reset_x((x, y))
+                else:
+                    circuit.place_reset_z((x, y))
+
+    def _prepare_qubits_for_code_expansion_downward(self) -> None:
+        if self.surface_intermediate_distance == self.surface_final_distance:
+            return
+
+        surface_distance = self.surface_distance
+        surface_offset_x = self.surface_offset_x
+        surface_offset_y = self.surface_offset_y
+        circuit = self.circuit
+
+        intermediate_distance = self.surface_intermediate_distance
+        final_distance = self.surface_final_distance
+        assert final_distance == surface_distance
+
+        for i in range(surface_distance):
+            for j in range(surface_distance):
+                x = surface_offset_x + j * 2
+                y = surface_offset_y + i * 2
+
+                # Initialize data qubits:
+                if i < intermediate_distance and j < intermediate_distance:
+                    pass
+                elif i >= j:
+                    circuit.place_reset_x((x, y))
+                else:
+                    circuit.place_reset_z((x, y))
+
+    def _setup_syndrome_measurements_for_code_expansion_upward(self) -> None:
+        if self.surface_intermediate_distance == self.surface_final_distance:
+            return
+
+        assert self.surface_intermediate_distance < self.surface_final_distance
+        assert self.surface_distance == self.surface_final_distance
+        surface_offset_x = self.surface_offset_x
+        surface_offset_y = self.surface_offset_y
+        surface_distance = self.surface_distance
+        intermediate_distance = self.surface_intermediate_distance
+        final_distance = self.surface_final_distance
+        circuit = self.circuit
+        syndrome_measurements = self.surface_syndrome_measurements
+
+        TWO_WEIGHT_UP = SurfaceStabilizerPattern.TWO_WEIGHT_UP
+        TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
+        TWO_WEIGHT_LEFT = SurfaceStabilizerPattern.TWO_WEIGHT_LEFT
+        TWO_WEIGHT_RIGHT = SurfaceStabilizerPattern.TWO_WEIGHT_RIGHT
+        FOUR_WEIGHT = SurfaceStabilizerPattern.FOUR_WEIGHT
+
+        for i in range(surface_distance):
+            for j in range(surface_distance):
+                x = surface_offset_x + j * 2
+                y = surface_offset_y + i * 2
+                m: SurfaceSyndromeMeasurement
+
+                # Weight-two syndrome measurements:
+                if i == 0 and j % 2 == 0 and j < final_distance - 1:
+                    assert (x + 1, y - 1) not in syndrome_measurements
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, True)
+                    syndrome_measurements[(x + 1, y - 1)] = m
+                if i == final_distance - 1 and j % 2 == 1 and intermediate_distance - 1 <= j and j < final_distance - 1:
+                    assert (x + 1, y + 1) not in syndrome_measurements
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_UP, False)
+                    syndrome_measurements[(x + 1, y + 1)] = m
+                if j == 0 and i % 2 == 1 and i < (final_distance - intermediate_distance):
+                    assert (x - 1, y + 1) not in syndrome_measurements
+                    m = SurfaceZSyndromeMeasurement(circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, False)
+                    syndrome_measurements[(x - 1, y + 1)] = m
+                if j == final_distance - 1 and i % 2 == 0 and i < final_distance - 1:
+                    assert (x + 1, y + 1) not in syndrome_measurements
+                    m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_LEFT, True)
+                    syndrome_measurements[(x + 1, y + 1)] = m
+
+                # Weight-four syndrome measurements:
+                if i >= final_distance - 1 or j >= final_distance - 1:
+                    continue
+                if i >= final_distance - intermediate_distance and j < intermediate_distance - 1:
+                    continue
+
+                last_measurement: MeasurementIdentifier | None = None
+                if (i + j) % 2 == 0:
+                    satisfied = i + j >= final_distance - 1
+                    if (x + 1, y + 1) in syndrome_measurements:
+                        assert j == intermediate_distance - 1
+                        assert satisfied
+                        m = syndrome_measurements[(x + 1), (y + 1)]
+                        del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceZSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_LEFT
+                        last_measurement = m.last_measurement
+                        assert last_measurement is not None
+                        satisfied = False
+                    m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                else:
+                    satisfied = i + j < final_distance - 2
+                    if (x + 1, y + 1) in syndrome_measurements:
+                        assert i == final_distance - intermediate_distance - 1
+                        assert satisfied
+                        m = syndrome_measurements[(x + 1), (y + 1)]
+                        del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceXSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_DOWN
+                        last_measurement = m.last_measurement
+                        assert last_measurement is not None
+                        satisfied = False
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                m.last_measurement = last_measurement
+                syndrome_measurements[(x + 1, y + 1)] = m
+
+        assert len(syndrome_measurements) == (surface_distance * surface_distance) - 1
+
+    def _setup_syndrome_measurements_for_code_expansion_downward(self) -> None:
+        if self.surface_intermediate_distance == self.surface_final_distance:
+            return
+
+        assert self.surface_intermediate_distance < self.surface_final_distance
+        assert self.surface_distance == self.surface_final_distance
+        surface_offset_x = self.surface_offset_x
+        surface_offset_y = self.surface_offset_y
+        surface_distance = self.surface_distance
+        intermediate_distance = self.surface_intermediate_distance
+        final_distance = self.surface_final_distance
+        circuit = self.circuit
+        syndrome_measurements = self.surface_syndrome_measurements
+
+        TWO_WEIGHT_UP = SurfaceStabilizerPattern.TWO_WEIGHT_UP
+        TWO_WEIGHT_DOWN = SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
+        TWO_WEIGHT_LEFT = SurfaceStabilizerPattern.TWO_WEIGHT_LEFT
+        TWO_WEIGHT_RIGHT = SurfaceStabilizerPattern.TWO_WEIGHT_RIGHT
+        FOUR_WEIGHT = SurfaceStabilizerPattern.FOUR_WEIGHT
+
+        for i in range(surface_distance):
+            for j in range(surface_distance):
+                x = surface_offset_x + j * 2
+                y = surface_offset_y + i * 2
+                m: SurfaceSyndromeMeasurement
+
+                # Weight-two syndrome measurements:
+                if i == 0 and j % 2 == 0 and intermediate_distance - 1 <= j and j < final_distance - 1:
+                    assert (x + 1, y - 1) not in syndrome_measurements
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
+                    syndrome_measurements[(x + 1, y - 1)] = m
+                if i == final_distance - 1 and j % 2 == 1 and j < final_distance - 1:
+                    assert (x + 1, y + 1) not in syndrome_measurements
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_UP, True)
+                    syndrome_measurements[(x + 1, y + 1)] = m
+                if j == 0 and i % 2 == 1 and intermediate_distance - 1 <= i and i < final_distance - 1:
+                    assert (x - 1, y + 1) not in syndrome_measurements
+                    m = SurfaceZSyndromeMeasurement(circuit, (x - 1, y + 1), TWO_WEIGHT_RIGHT, False)
+                    syndrome_measurements[(x - 1, y + 1)] = m
+                if j == final_distance - 1 and i % 2 == 0 and i < final_distance - 1:
+                    assert (x + 1, y + 1) not in syndrome_measurements
+                    m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), TWO_WEIGHT_LEFT, True)
+                    syndrome_measurements[(x + 1, y + 1)] = m
+
+                # Weight-four syndrome measurements:
+                if i >= final_distance - 1 or j >= final_distance - 1:
+                    continue
+                if i < intermediate_distance - 1 and j < intermediate_distance - 1:
+                    continue
+
+                last_measurement: MeasurementIdentifier | None = None
+                if (i + j) % 2 == 0:
+                    satisfied = i < j
+                    if (x + 1, y + 1) in syndrome_measurements:
+                        assert j == intermediate_distance - 1
+                        assert satisfied
+                        m = syndrome_measurements[(x + 1), (y + 1)]
+                        del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceZSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_LEFT
+                        last_measurement = m.last_measurement
+                        assert last_measurement is not None
+                        satisfied = False
+                    m = SurfaceZSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                else:
+                    satisfied = j < i
+                    if (x + 1, y + 1) in syndrome_measurements:
+                        assert i == intermediate_distance - 1
+                        assert satisfied
+                        m = syndrome_measurements[(x + 1), (y + 1)]
+                        del syndrome_measurements[(x + 1), (y + 1)]
+                        assert isinstance(m, SurfaceXSyndromeMeasurement)
+                        assert m.pattern == TWO_WEIGHT_UP
+                        last_measurement = m.last_measurement
+                        assert last_measurement is not None
+                        satisfied = False
+                    m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y + 1), FOUR_WEIGHT, satisfied)
+                m.last_measurement = last_measurement
+                syndrome_measurements[(x + 1, y + 1)] = m
+
+        assert len(syndrome_measurements) == (surface_distance * surface_distance) - 1
 
     def run(self) -> None:
         SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
@@ -183,7 +402,9 @@ class SteanePlusSurfaceCode:
             circuit.place_tick()
             tick += 1
 
+        # The qubits on the Steane code are now noisy for `self.partially_noiseless_circuit`.
         self.partially_noiseless_circuit.mark_qubits_as_noiseless([])
+
         # Let's recover and reconfigure some stabilizers.
         for j in range(surface_distance):
             x = surface_offset_x + j * 2
@@ -193,6 +414,10 @@ class SteanePlusSurfaceCode:
                     self.circuit, (x + 1, y - 1), SurfaceStabilizerPattern.TWO_WEIGHT_DOWN, False)
                 self.surface_syndrome_measurements[(x + 1, y - 1)] = m
                 m.set_post_selection(self.full_post_selection)
+
+        if not self.full_post_selection:
+            for m in self.surface_syndrome_measurements.values():
+                m.set_post_selection(False)
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
             for m in self.surface_syndrome_measurements.values():
@@ -204,13 +429,28 @@ class SteanePlusSurfaceCode:
         assert last is not None
         circuit.place_detector(ls_results.x_0145_measurements() + [last], post_selection=True)
 
-        if not self.full_post_selection:
-            for m in self.surface_syndrome_measurements.values():
-                m.set_post_selection(False)
+        if False:
+            # Upward code expansion:
+            # TODO: Consider removing this along with _setup_syndrome_measurements_for_code_expansion_upward() and
+            # _prepare_qubits_for_code_expansion_upward().
+            assert self.surface_distance == self.surface_intermediate_distance
+            self.surface_distance = self.surface_final_distance
+            self.surface_offset_y -= 2 * (self.surface_final_distance - self.surface_intermediate_distance)
+            surface_offset_y = self.surface_offset_y
+            surface_distance = self.surface_distance
+            assert surface_offset_y >= 0
+            self._setup_syndrome_measurements_for_code_expansion_upward()
+            self._prepare_qubits_for_code_expansion_upward()
+        else:
+            # Downward code expansion:
+            assert self.surface_distance == self.surface_intermediate_distance
+            self.surface_distance = self.surface_final_distance
+            surface_distance = self.surface_distance
+            assert surface_offset_y + 2 * (surface_distance - 1) < mapping.height
+            self._setup_syndrome_measurements_for_code_expansion_downward()
+            self._prepare_qubits_for_code_expansion_downward()
 
-        # We perform one-round of syndrome measurements above.
-        # Hence, here we perform `(num_epilogue_syndrome_extraction_rounds - 1)` rounds of syndrome measurments.
-        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * (self.num_epilogue_syndrome_extraction_rounds - 1)):
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * self.num_epilogue_syndrome_extraction_rounds):
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
@@ -227,15 +467,19 @@ class SteanePlusSurfaceCode:
                 case InitialValue.Plus:
                     ms.append(circuit.place_mpp(self._logical_x_pauli_string()))
                     ms.extend(ls_results.logical_x_measurements())
+                    self.detector_for_complementary_gap = circuit.place_detector(ms)
+                    circuit.place_observable_include(ms)
                 case InitialValue.Zero:
                     ms.append(circuit.place_mpp(self._logical_z_pauli_string()))
                     ms.extend(ls_results.lattice_surgery_zz_measurements())
+                    self.detector_for_complementary_gap = circuit.place_detector(ms)
+                    circuit.place_observable_include(ms)
                 case InitialValue.SPlus:
                     ms.append(circuit.place_mpp(self._logical_y_pauli_string()))
                     ms.extend(ls_results.logical_x_measurements())
                     ms.extend(ls_results.lattice_surgery_zz_measurements())
-            self.detector_for_complementary_gap = circuit.place_detector(ms)
-            circuit.place_observable_include(ms, ObservableIdentifier(0))
+                    self.detector_for_complementary_gap = circuit.place_detector(ms)
+                    circuit.place_observable_include(ms)
 
     def _logical_x_pauli_string(self) -> stim.PauliString:
         surface_distance = self.surface_distance
@@ -438,7 +682,8 @@ def main() -> None:
     parser.add_argument('--error-probability', type=float, default=0)
     parser.add_argument('--parallelism', type=int, default=1)
     parser.add_argument('--max-shots-per-task', type=int, default=2 ** 20)
-    parser.add_argument('--surface-distance', type=int, default=3)
+    parser.add_argument('--surface-intermediate-distance', type=int, default=None)
+    parser.add_argument('--surface-final-distance', type=int, default=3)
     parser.add_argument('--initial-value', choices=['+', '0', 'S+'], default='+')
     parser.add_argument('--steane-syndrome-extraction-pattern', choices=['XZZ', 'ZXZ', 'ZZ'], default='ZXZ',)
     parser.add_argument('--perfect-initialization', action='store_true')
@@ -466,7 +711,8 @@ def main() -> None:
     print('  error-probability = {}'.format(args.error_probability))
     print('  parallelism = {}'.format(args.parallelism))
     print('  max-shots-per-task = {}'.format(args.max_shots_per_task))
-    print('  surface-distance = {}'.format(args.surface_distance))
+    print('  surface-intermediate-distance = {}'.format(args.surface_intermediate_distance))
+    print('  surface-final-distance = {}'.format(args.surface_final_distance))
     print('  initial-value = {}'.format(args.initial_value))
     print('  steane-syndrome-extraction-pattern = {}'.format(args.steane_syndrome_extraction_pattern))
     print('  perfect-initialization = {}'.format(perfect_initialization))
@@ -481,7 +727,8 @@ def main() -> None:
     error_probability: float = args.error_probability
     parallelism: int = args.parallelism
     max_shots_per_task: int = args.max_shots_per_task
-    surface_distance: int = args.surface_distance
+    surface_final_distance: int = args.surface_final_distance
+    surface_intermediate_distance: int = args.surface_intermediate_distance or surface_final_distance
     match args.initial_value:
         case '+':
             initial_value = InitialValue.Plus
@@ -516,9 +763,10 @@ def main() -> None:
         print('perfect-initialization=False is supported only for S+ initial value.', file=sys.stderr)
         return
 
-    mapping = QubitMapping(30, 30)
+    mapping = QubitMapping(30, 40)
     r = SteanePlusSurfaceCode(
-        mapping, surface_distance, initial_value, steane_syndrome_extraction_pattern,
+        mapping, surface_intermediate_distance, surface_final_distance, initial_value,
+        steane_syndrome_extraction_pattern,
         perfect_initialization, error_probability, with_heulistic_post_selection, full_post_selection,
         num_epilogue_syndrome_extraction_rounds)
     primal_circuit = r.primal_circuit
@@ -569,7 +817,7 @@ def main() -> None:
         w = num_wrong
         d = num_discarded
         num_to_be_discarded_additionally = num_samples * rate - num_discarded
-        if num_to_be_discarded_additionally >= 0:
+        if num_to_be_discarded_additionally > 0:
             assert num_to_be_discarded_additionally <= bucket.num_valid_samples + bucket.num_wrong_samples
             bucket_valid_rate = bucket.num_valid_samples / (bucket.num_valid_samples + bucket.num_wrong_samples)
             bucket_wrong_rate = 1 - bucket_valid_rate

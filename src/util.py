@@ -58,6 +58,9 @@ class DetectorIdentifier:
             return False
         return self.id == other.id
 
+    def __str__(self):
+        return f'DetectorIdentifier({self.id})'
+
 
 class ObservableIdentifier:
     '''Representing a Stim observable ID.'''
