@@ -168,16 +168,13 @@ class SteanePlusSurfaceCode:
                     self.circuit, (x + 1, y - 1), SurfaceStabilizerPattern.TWO_WEIGHT_DOWN, False)
                 self.surface_syndrome_measurements[(x + 1, y - 1)] = m
                 m.set_post_selection(self.full_post_selection)
+        self.surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement = \
+            ls_results.x_ab_measurement()
 
         for i in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        # Place a detector for the six-weight X stabilizer.
-        last = self.surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        circuit.place_detector(ls_results.x_0145_measurements() + [last], post_selection=True)
 
         if not self.full_post_selection:
             # We perform one-round of syndrome measurements above.

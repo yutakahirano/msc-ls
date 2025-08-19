@@ -1490,16 +1490,14 @@ class SteaneInitializationTest(unittest.TestCase):
             if j % 2 == 0 and j < surface_distance - 1:
                 m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
                 surface_syndrome_measurements[(x + 1, y - 1)] = m
+        ab_syndrome_measurement: SurfaceSyndromeMeasurement = \
+            surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)]
+        ab_syndrome_measurement.last_measurement = results.x_ab_measurement()
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
             for m in surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        # Place a detector for the six-weight syndrome.
-        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
 
         # Place an observable for the logical value.
         logical_x_pauli_string = stim.PauliString()
@@ -1560,16 +1558,14 @@ class SteaneInitializationTest(unittest.TestCase):
             if j % 2 == 0 and j < surface_distance - 1:
                 m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
                 surface_syndrome_measurements[(x + 1, y - 1)] = m
+        ab_syndrome_measurement: SurfaceSyndromeMeasurement = \
+            surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)]
+        ab_syndrome_measurement.last_measurement = results.x_ab_measurement()
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
             for m in surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        # Place a detector for the six-weight syndrome.
-        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
 
         # Place an observable for the logical value.
         logical_z_pauli_string = stim.PauliString()
@@ -1628,16 +1624,14 @@ class SteaneInitializationTest(unittest.TestCase):
             if j % 2 == 0 and j < surface_distance - 1:
                 m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
                 surface_syndrome_measurements[(x + 1, y - 1)] = m
+        ab_syndrome_measurement: SurfaceSyndromeMeasurement = \
+            surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)]
+        ab_syndrome_measurement.last_measurement = results.x_ab_measurement()
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
             for m in surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        # Place a detector for the six-weight syndrome.
-        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
 
         # Place an observable for the logical value.
         logical_x_pauli_string = stim.PauliString()
@@ -1696,16 +1690,14 @@ class SteaneInitializationTest(unittest.TestCase):
             if j % 2 == 0 and j < surface_distance - 1:
                 m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
                 surface_syndrome_measurements[(x + 1, y - 1)] = m
+        ab_syndrome_measurement: SurfaceSyndromeMeasurement = \
+            surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)]
+        ab_syndrome_measurement.last_measurement = results.x_ab_measurement()
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
             for m in surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        # Place a detector for the six-weight syndrome.
-        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
 
         # Place an observable for the logical value.
         logical_z_pauli_string = stim.PauliString()
@@ -1764,16 +1756,14 @@ class SteaneInitializationTest(unittest.TestCase):
             if j % 2 == 0 and j < surface_distance - 1:
                 m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
                 surface_syndrome_measurements[(x + 1, y - 1)] = m
+        ab_syndrome_measurement: SurfaceSyndromeMeasurement = \
+            surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)]
+        ab_syndrome_measurement.last_measurement = results.x_ab_measurement()
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
             for m in surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        # Place a detector for the six-weight syndrome.
-        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
 
         # Place an observable for the logical value.
         logical_x_pauli_string = stim.PauliString()
@@ -1832,16 +1822,14 @@ class SteaneInitializationTest(unittest.TestCase):
             if j % 2 == 0 and j < surface_distance - 1:
                 m = SurfaceXSyndromeMeasurement(circuit, (x + 1, y - 1), TWO_WEIGHT_DOWN, False)
                 surface_syndrome_measurements[(x + 1, y - 1)] = m
+        ab_syndrome_measurement: SurfaceSyndromeMeasurement = \
+            surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)]
+        ab_syndrome_measurement.last_measurement = results.x_ab_measurement()
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * 2):
             for m in surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
-
-        last = surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement
-        assert last is not None
-        # Place a detector for the six-weight syndrome.
-        circuit.place_detector(results.x_0145_measurements() + [last], post_selection=True)
 
         # Place an observable for the logical value.
         logical_z_pauli_string = stim.PauliString()

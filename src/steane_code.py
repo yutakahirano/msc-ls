@@ -946,7 +946,7 @@ class LatticeSurgeryMeasurements:
         self._complete = False
         self._logical_x_measurements: list[MeasurementIdentifier] = []
         self._lattice_surgery_zz_measurements: list[MeasurementIdentifier] = []
-        self._x_0145_measurements: list[MeasurementIdentifier] = []
+        self._x_ab_measurement: MeasurementIdentifier | None = None
 
     def is_complete(self) -> bool:
         return self._complete
@@ -959,9 +959,10 @@ class LatticeSurgeryMeasurements:
         assert self.is_complete()
         return self._lattice_surgery_zz_measurements
 
-    def x_0145_measurements(self) -> list[MeasurementIdentifier]:
+    def x_ab_measurement(self) -> MeasurementIdentifier:
         assert self.is_complete()
-        return self._x_0145_measurements
+        assert self._x_ab_measurement is not None
+        return self._x_ab_measurement
 
 
 def lattice_surgery_generator_xzz(
@@ -976,6 +977,9 @@ def lattice_surgery_generator_xzz(
     # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
     A_1A_L = (0, 16)
     A_1A_R = (2, 16)
+
+    SURFACE_B = (3, 17)
+    A_AB = A_1A_R
 
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1264,28 +1268,32 @@ def lattice_surgery_generator_xzz(
     circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
     circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
 
-    # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
+    # Surface(1); STEANE_5, SURFACE_A, and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
     m_steane_5 = circuit.place_measurement_x(STEANE_5)
-    # Surface(2)
+    circuit.place_reset_x(A_AB)
+    # Surface(2); SURFACE_B is accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
-    # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
+    circuit.place_cx(A_AB, SURFACE_A)
+    # Surface(3); STEANE_3 and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
     m_steane_3 = circuit.place_measurement_x(STEANE_3)
+    circuit.place_cx(A_AB, SURFACE_B)
     # Surface(4)
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
+    m_ab = circuit.place_measurement_x(A_AB)
     # Surface(5); The last cycle of the third round.
     boundary_measurements: list[MeasurementIdentifier] = [left_boundary_measurement]
     for m in ls_syndrome_measurements:
@@ -1297,10 +1305,11 @@ def lattice_surgery_generator_xzz(
 
     circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
     circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
+    circuit.place_detector([m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True)
 
     results._lattice_surgery_zz_measurements = boundary_measurements
     results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
-    results._x_0145_measurements = [m_steane_0, m_steane_1, m_steane_4, m_steane_5]
+    results._x_ab_measurement = m_ab
     results._complete = True
 
 
@@ -1316,9 +1325,13 @@ def lattice_surgery_generator_zxz(
 
     # The top-left data qubit for the surface code.
     SURFACE_A = (1, 17)
+
     # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
     A_1A_L = (0, 16)
     A_1A_R = (2, 16)
+
+    SURFACE_B = (3, 17)
+    A_AB = A_1A_R
 
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1594,7 +1607,7 @@ def lattice_surgery_generator_zxz(
 
     m_steane_6 = circuit.place_measurement_x(STEANE_6)
 
-    # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
+    # Surface(1); STEANE_5, SURFACE_A, and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
@@ -1610,7 +1623,8 @@ def lattice_surgery_generator_zxz(
     m_steane_4 = circuit.place_measurement_x(STEANE_4)
     m_steane_5 = circuit.place_measurement_x(STEANE_5)
 
-    # Surface(2)
+    circuit.place_reset_x(A_AB)
+    # Surface(2); SURFACE_B is accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
@@ -1619,7 +1633,8 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0235_035, A_0235_2)
     circuit.place_cx(A_0246_46, A_0246_02)
 
-    # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
+    circuit.place_cx(A_AB, SURFACE_A)
+    # Surface(3); STEANE_3 and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
@@ -1634,11 +1649,13 @@ def lattice_surgery_generator_zxz(
     circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
     circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
 
+    circuit.place_cx(A_AB, SURFACE_B)
     # Surface(4)
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
+    m_ab = circuit.place_measurement_x(A_AB)
     # Surface(5); The last cycle of the third round.
     boundary_measurements: list[MeasurementIdentifier] = [left_boundary_measurement]
     for m in ls_syndrome_measurements:
@@ -1650,10 +1667,11 @@ def lattice_surgery_generator_zxz(
 
     circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
     circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
+    circuit.place_detector([m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True)
 
     results._lattice_surgery_zz_measurements = boundary_measurements
     results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
-    results._x_0145_measurements = [m_steane_0, m_steane_1, m_steane_4, m_steane_5]
+    results._x_ab_measurement = m_ab
     results._complete = True
 
 
@@ -1669,6 +1687,9 @@ def lattice_surgery_generator_zz(
     # Ancillae for the two-weight syndrome measurements between the Steane and surface codes.
     A_1A_L = (0, 16)
     A_1A_R = (2, 16)
+
+    SURFACE_B = (3, 17)
+    A_AB = A_1A_R
 
     FOUR_WEIGHT = surface_code.SurfaceStabilizerPattern.FOUR_WEIGHT
     TWO_WEIGHT_DOWN = surface_code.SurfaceStabilizerPattern.TWO_WEIGHT_DOWN
@@ -1922,28 +1943,32 @@ def lattice_surgery_generator_zz(
     circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
     circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
 
-    # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
+    # Surface(1); STEANE_5, SURFACE_A, and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
     m_steane_5 = circuit.place_measurement_x(STEANE_5)
-    # Surface(2)
+    circuit.place_reset_x(A_AB)
+    # Surface(2); SURFACE_B is accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
-    # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
+    circuit.place_cx(A_AB, SURFACE_A)
+    # Surface(3); STEANE_3 and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
     m_steane_3 = circuit.place_measurement_x(STEANE_3)
+    circuit.place_cx(A_AB, SURFACE_B)
     # Surface(4)
     for m in ls_syndrome_measurements:
         m.run()
     yield
 
+    m_ab = circuit.place_measurement_x(A_AB)
     # Surface(5); The last cycle of the third round.
     boundary_measurements: list[MeasurementIdentifier] = [left_boundary_measurement]
     for m in ls_syndrome_measurements:
@@ -1955,8 +1980,9 @@ def lattice_surgery_generator_zz(
 
     circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
     circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
+    circuit.place_detector([m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True)
 
     results._lattice_surgery_zz_measurements = boundary_measurements
     results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
-    results._x_0145_measurements = [m_steane_0, m_steane_1, m_steane_4, m_steane_5]
+    results._x_ab_measurement = m_ab
     results._complete = True
