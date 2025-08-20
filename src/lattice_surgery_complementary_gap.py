@@ -8,6 +8,7 @@ import math
 import numpy as np
 import pymatching
 import re
+import sqlite3
 import stim
 import sys
 
@@ -21,6 +22,8 @@ from steane_code import SteaneZ0145SyndromeMeasurement, SteaneZ0235SyndromeMeasu
 from steane_code import STEANE_0, STEANE_1, STEANE_2, STEANE_3, STEANE_4, STEANE_5, STEANE_6
 from surface_code import SurfaceStabilizerPattern, SurfaceSyndromeMeasurement
 from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
+from lookup_table import LookupTable, LookupTableKey, LookupTableWithNegativeSamplesOnly
+from lookup_table import ensure_lookup_tables_table, query_lookup_table, store_lookup_table
 
 
 class InitialValue(enum.Enum):
@@ -66,6 +69,7 @@ class SteanePlusSurfaceCode:
         self.surface_offset_x = 1
         self.surface_offset_y = 17
         self.detector_for_complementary_gap: DetectorIdentifier | None = None
+        self.num_detectors_for_lookup_table: int = -1
 
         self._setup_syndrome_measurements()
 
@@ -404,6 +408,7 @@ class SteanePlusSurfaceCode:
 
         # The qubits on the Steane code are now noisy for `self.partially_noiseless_circuit`.
         self.partially_noiseless_circuit.mark_qubits_as_noiseless([])
+        self.num_detectors_for_lookup_table = self.partially_noiseless_circuit.circuit.num_detectors
 
         # Let's recover and reconfigure some stabilizers.
         for j in range(surface_distance):
@@ -503,56 +508,15 @@ class SteanePlusSurfaceCode:
         return self._logical_x_pauli_string() * self._logical_z_pauli_string()
 
 
-class SimulationResults:
-    class Bucket:
-        def __init__(self) -> None:
-            self.num_valid_samples: int = 0
-            self.num_wrong_samples: int = 0
-
-    def __init__(self) -> None:
-        self.buckets: list[SimulationResults.Bucket] = []
-        self.num_discarded_samples: int = 0
-
-    def ensure_bucket(self, gap: float) -> SimulationResults.Bucket:
-        int_gap = int(gap)
-        if len(self.buckets) > int_gap:
-            return self.buckets[int_gap]
-        self.buckets.extend([SimulationResults.Bucket() for _ in range(int_gap - len(self.buckets) + 1)])
-        assert len(self.buckets) == int_gap + 1
-        return self.buckets[int_gap]
-
-    def append(self, gap: float, expected: bool) -> None:
-        bucket = self.ensure_bucket(gap)
-
-        if expected:
-            bucket.num_valid_samples += 1
-        else:
-            bucket.num_wrong_samples += 1
-
-    def append_discarded(self) -> None:
-        self.num_discarded_samples += 1
-
-    def extend(self, other: SimulationResults) -> None:
-        self.buckets.extend([SimulationResults.Bucket() for _ in range(len(other.buckets) - len(self.buckets))])
-        assert len(self.buckets) >= len(other.buckets)
-
-        self.num_discarded_samples += other.num_discarded_samples
-        for (i, bucket) in enumerate(other.buckets):
-            self.buckets[i].num_valid_samples += bucket.num_valid_samples
-            self.buckets[i].num_wrong_samples += bucket.num_wrong_samples
-
-    def __len__(self) -> int:
-        return sum([b.num_valid_samples + b.num_wrong_samples for b in self.buckets]) + self.num_discarded_samples
-
-
-def perform_simulation(
+def construct_lookup_table(
         primal_stim_circuit: stim.Circuit,
         partially_noiseless_stim_circuit: stim.Circuit,
         num_shots: int,
         detector_for_complementary_gap: DetectorIdentifier,
+        num_detectors_for_lookup_table: int,
         seed: int | None,
-        detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
-
+        detectors_for_post_selection: list[DetectorIdentifier],
+        gap_threshold: float) -> LookupTable:
     # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
     # non-matchable detectors. We perform post-selection for all detectors in the Steane code, so the difference
     # between the two DEMs should be small...
@@ -563,16 +527,18 @@ def perform_simulation(
     sampler = primal_stim_circuit.compile_detector_sampler(seed=seed)
     detection_events, observable_flips = sampler.sample(num_shots, separate_observables=True)
 
-    results = SimulationResults()
+    results = SimulationResultsForDiscardRates()
     postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
 
     mask = np.ones_like(detection_events[0], dtype=bool)
     mask[detector_for_complementary_gap.id] = False
 
+    table = LookupTable(gap_threshold=gap_threshold)
+
     for shot in range(num_shots):
         syndrome = detection_events[shot]
         if np.any(syndrome[postselection_ids] != 0):
-            results.append_discarded()
+            results.add_discarded()
             continue
 
         prediction, weight = matcher.decode(syndrome, return_weight=True)
@@ -604,7 +570,257 @@ def perform_simulation(
 
         gap *= 100
 
-        results.append(gap, expected)
+        table.add(syndrome[:num_detectors_for_lookup_table], gap, expected)
+
+    return table
+
+
+def parallel_construct_lookup_table(
+        primal_circuit: Circuit,
+        partially_noiseless_circuit: Circuit,
+        num_shots: int,
+        detector_for_complementary_gap: DetectorIdentifier,
+        num_detectors_for_lookup_table: int,
+        gap_threshold: float,
+        parallelism: int,
+        num_shots_per_task: int,
+        show_progress: bool) -> LookupTable:
+    if num_shots / parallelism < 1000 or parallelism == 1:
+        return construct_lookup_table(
+            primal_circuit.circuit,
+            partially_noiseless_circuit.circuit,
+            num_shots,
+            detector_for_complementary_gap,
+            num_detectors_for_lookup_table,
+            None,  # seed
+            primal_circuit.detectors_for_post_selection,
+            gap_threshold)
+
+    table = LookupTable(gap_threshold=gap_threshold)
+    progress = 0
+    with ProcessPoolExecutor(max_workers=parallelism) as executor:
+        futures: list[concurrent.futures.Future] = []
+        remaining_shots = num_shots
+
+        num_shots_per_task = min(num_shots_per_task, (num_shots + parallelism - 1) // parallelism)
+        num_shots_for_future: dict[concurrent.futures.Future, int] = {}
+        while remaining_shots > 0:
+            seed = None
+            num_shots_for_this_task = min(num_shots_per_task, remaining_shots)
+            remaining_shots -= num_shots_for_this_task
+            future = executor.submit(construct_lookup_table,
+                                     primal_circuit.circuit,
+                                     partially_noiseless_circuit.circuit,
+                                     num_shots_for_this_task,
+                                     detector_for_complementary_gap,
+                                     num_detectors_for_lookup_table,
+                                     seed,
+                                     primal_circuit.detectors_for_post_selection,
+                                     gap_threshold)
+            futures.append(future)
+            num_shots_for_future[future] = num_shots_for_this_task
+        try:
+            while len(futures) > 0:
+                import sys
+                if show_progress:
+                    print('Progress: {}% ({}/{})\r'.format(
+                        round((progress / num_shots) * 100), progress, num_shots), end='')
+                concurrent.futures.wait(futures, timeout=None, return_when=concurrent.futures.FIRST_COMPLETED)
+                new_futures = []
+                for future in futures:
+                    if future.done():
+                        table.extend(future.result())
+                        progress += num_shots_for_future[future]
+                        del num_shots_for_future[future]
+                    else:
+                        new_futures.append(future)
+                futures = new_futures
+            if show_progress:
+                print()
+        finally:
+            for future in futures:
+                future.cancel()
+    return table
+
+
+class SimulationResultsForDiscardRates:
+    class Bucket:
+        def __init__(self) -> None:
+            self.num_valid_samples: int = 0
+            self.num_wrong_samples: int = 0
+
+    def __init__(self) -> None:
+        self.buckets: list[SimulationResultsForDiscardRates.Bucket] = []
+        self.num_discarded_samples: int = 0
+
+    def ensure_bucket(self, gap: float) -> SimulationResultsForDiscardRates.Bucket:
+        int_gap = int(gap)
+        if len(self.buckets) > int_gap:
+            return self.buckets[int_gap]
+        Bucket = SimulationResultsForDiscardRates.Bucket
+        self.buckets.extend([Bucket() for _ in range(int_gap - len(self.buckets) + 1)])
+        assert len(self.buckets) == int_gap + 1
+        return self.buckets[int_gap]
+
+    def add(self, gap: float, expected: bool) -> None:
+        bucket = self.ensure_bucket(gap)
+
+        if expected:
+            bucket.num_valid_samples += 1
+        else:
+            bucket.num_wrong_samples += 1
+
+    def add_discarded(self) -> None:
+        self.num_discarded_samples += 1
+
+    def extend(self, other: SimulationResultsForDiscardRates) -> None:
+        Bucket = SimulationResultsForDiscardRates.Bucket
+        self.buckets.extend([Bucket() for _ in range(len(other.buckets) - len(self.buckets))])
+        assert len(self.buckets) >= len(other.buckets)
+
+        self.num_discarded_samples += other.num_discarded_samples
+        for (i, bucket) in enumerate(other.buckets):
+            self.buckets[i].num_valid_samples += bucket.num_valid_samples
+            self.buckets[i].num_wrong_samples += bucket.num_wrong_samples
+
+    def __len__(self) -> int:
+        return sum([b.num_valid_samples + b.num_wrong_samples for b in self.buckets]) + self.num_discarded_samples
+
+
+class SimulationResultsForGapThreshold:
+    def __init__(self, gap_threshold: float) -> None:
+        self.num_valid_samples_with_lookup_table = 0
+        self.num_wrong_samples_with_lookup_table = 0
+        self.num_discarded_samples_with_lookup_table = 0
+        self.num_valid_samples_without_lookup_table = 0
+        self.num_wrong_samples_without_lookup_table = 0
+        self.num_discarded_samples_without_lookup_table = 0
+
+        self.num_discarded_due_to_lookup_table = 0
+        self.gap_threshold = gap_threshold
+
+    def add_discarded(self) -> None:
+        self.num_discarded_samples_without_lookup_table += 1
+        self.num_discarded_samples_with_lookup_table += 1
+        len(self)
+
+    def add(self, gap: float, expected: bool, discarded_due_to_lookup_table: bool) -> None:
+        if discarded_due_to_lookup_table:
+            self.num_discarded_samples_with_lookup_table += 1
+            self.num_discarded_due_to_lookup_table += 1
+        if gap < self.gap_threshold:
+            self.num_discarded_samples_without_lookup_table += 1
+            if not discarded_due_to_lookup_table:
+                self.num_discarded_samples_with_lookup_table += 1
+        elif expected:
+            if not discarded_due_to_lookup_table:
+                self.num_valid_samples_with_lookup_table += 1
+            self.num_valid_samples_without_lookup_table += 1
+        else:
+            if not discarded_due_to_lookup_table:
+                self.num_wrong_samples_with_lookup_table += 1
+            self.num_wrong_samples_without_lookup_table += 1
+        len(self)
+
+    def extend(self, other: SimulationResultsForGapThreshold) -> None:
+        assert self.gap_threshold == other.gap_threshold
+        self.num_valid_samples_with_lookup_table += other.num_valid_samples_with_lookup_table
+        self.num_wrong_samples_with_lookup_table += other.num_wrong_samples_with_lookup_table
+        self.num_discarded_samples_with_lookup_table += other.num_discarded_samples_with_lookup_table
+        self.num_valid_samples_without_lookup_table += other.num_valid_samples_without_lookup_table
+        self.num_wrong_samples_without_lookup_table += other.num_wrong_samples_without_lookup_table
+        self.num_discarded_samples_without_lookup_table += other.num_discarded_samples_without_lookup_table
+
+        self.num_discarded_due_to_lookup_table += other.num_discarded_due_to_lookup_table
+
+    def __len__(self) -> int:
+        a = self.num_valid_samples_with_lookup_table + self.num_wrong_samples_with_lookup_table + \
+            self.num_discarded_samples_with_lookup_table
+        b = self.num_valid_samples_without_lookup_table + self.num_wrong_samples_without_lookup_table + \
+            self.num_discarded_samples_without_lookup_table
+        assert a == b
+        return a
+
+
+SimulationResults = SimulationResultsForDiscardRates | SimulationResultsForGapThreshold
+
+
+def perform_simulation(
+        primal_stim_circuit: stim.Circuit,
+        partially_noiseless_stim_circuit: stim.Circuit,
+        num_shots: int,
+        gap_threshold: float | None,
+        lookup_table: LookupTableWithNegativeSamplesOnly | None,
+        num_detectors_for_lookup_table: int,
+        detector_for_complementary_gap: DetectorIdentifier,
+        seed: int | None,
+        detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
+
+    # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
+    # non-matchable detectors. We perform post-selection for all detectors in the Steane code, so the difference
+    # between the two DEMs should be small...
+    dem = partially_noiseless_stim_circuit.detector_error_model(decompose_errors=True)
+    matcher = pymatching.Matching.from_detector_error_model(dem)
+
+    # However, we construct a sampler from `primal_stim_circuit` because it is *the real* circuit.
+    sampler = primal_stim_circuit.compile_detector_sampler(seed=seed)
+    detection_events, observable_flips = sampler.sample(num_shots, separate_observables=True)
+
+    results: SimulationResults
+    if gap_threshold is None:
+        results = SimulationResultsForDiscardRates()
+    else:
+        results = SimulationResultsForGapThreshold(gap_threshold)
+    postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
+
+    mask = np.ones_like(detection_events[0], dtype=bool)
+    mask[detector_for_complementary_gap.id] = False
+
+    for shot in range(num_shots):
+        syndrome = detection_events[shot]
+        if np.any(syndrome[postselection_ids] != 0):
+            results.add_discarded()
+            continue
+
+        prediction, weight = matcher.decode(syndrome, return_weight=True)
+        min_weight = weight
+        max_weight = weight
+
+        syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
+        try:
+            c_prediction, c_weight = matcher.decode(syndrome, return_weight=True)
+        except ValueError:
+            c_prediction = None
+            c_weight = math.inf
+        if c_weight < min_weight:
+            prediction = c_prediction
+        min_weight = min(min_weight, c_weight)
+        max_weight = max(max_weight, c_weight)
+
+        syndrome[detector_for_complementary_gap.id] = not syndrome[detector_for_complementary_gap.id]
+
+        actual = observable_flips[shot]
+        assert isinstance(prediction, np.ndarray)
+        expected = np.array_equal(actual, prediction)
+        gap = max_weight - min_weight
+
+        # Because we *know* that the trivial syndrome is least likely to have logical errors,
+        # we increase the gap manually.
+        if all(syndrome[mask] == 0):
+            gap += 10.0
+
+        gap *= 100
+
+        if gap_threshold is None:
+            assert isinstance(results, SimulationResultsForDiscardRates)
+            results.add(gap, expected)
+        else:
+            assert isinstance(results, SimulationResultsForGapThreshold)
+            discarded_due_to_lookup_table = False
+            if lookup_table is not None:
+                bytes = syndrome[:num_detectors_for_lookup_table].tobytes()
+                discarded_due_to_lookup_table = bytes in lookup_table
+            results.add(gap, expected, discarded_due_to_lookup_table)
 
     return results
 
@@ -614,6 +830,9 @@ def perform_parallel_simulation(
         partially_noiseless_circuit: Circuit,
         detector_for_complementary_gap: DetectorIdentifier,
         num_shots: int,
+        gap_threshold: float | None,
+        lookup_table: LookupTableWithNegativeSamplesOnly | None,
+        num_detectors_for_lookup_table: int,
         parallelism: int,
         num_shots_per_task: int,
         show_progress: bool) -> SimulationResults:
@@ -622,11 +841,18 @@ def perform_parallel_simulation(
                 primal_circuit.circuit,
                 partially_noiseless_circuit.circuit,
                 num_shots,
+                gap_threshold,
+                lookup_table,
+                num_detectors_for_lookup_table,
                 detector_for_complementary_gap,
                 None,
                 primal_circuit.detectors_for_post_selection)
 
-    results = SimulationResults()
+    results: SimulationResults
+    if gap_threshold is None:
+        results = SimulationResultsForDiscardRates()
+    else:
+        results = SimulationResultsForGapThreshold(gap_threshold)
     progress = 0
     with ProcessPoolExecutor(max_workers=parallelism) as executor:
         futures: list[concurrent.futures.Future] = []
@@ -641,6 +867,9 @@ def perform_parallel_simulation(
                                      primal_circuit.circuit,
                                      partially_noiseless_circuit.circuit,
                                      num_shots_for_this_task,
+                                     gap_threshold,
+                                     lookup_table,
+                                     num_detectors_for_lookup_table,
                                      detector_for_complementary_gap,
                                      seed,
                                      primal_circuit.detectors_for_post_selection)
@@ -655,7 +884,15 @@ def perform_parallel_simulation(
                 new_futures = []
                 for future in futures:
                     if future.done():
-                        results.extend(future.result())
+                        future_results = future.result()
+                        if gap_threshold is None:
+                            assert isinstance(results, SimulationResultsForDiscardRates)
+                            assert isinstance(future_results, SimulationResultsForDiscardRates)
+                            results.extend(future_results)
+                        else:
+                            assert isinstance(results, SimulationResultsForGapThreshold)
+                            assert isinstance(future_results, SimulationResultsForGapThreshold)
+                            results.extend(future_results)
                         progress += len(future.result())
                     else:
                         new_futures.append(future)
@@ -683,8 +920,11 @@ def main() -> None:
     parser.add_argument('--with-heulistic-post-selection', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--num-epilogue-syndrome-extraction-rounds', type=int, default=10)
-    parser.add_argument('--discard-rates', type=str, default='0')
+    parser.add_argument('--discard-rates', type=str)
+    parser.add_argument('--gap-threshold', type=float)
     parser.add_argument('--print-circuit', action='store_true')
+    parser.add_argument('--construct-lookup-table', action='store_true')
+    parser.add_argument('--lookup-table-min-samples', type=int, default=100)
     parser.add_argument('--show-progress', action='store_true')
 
     args = parser.parse_args()
@@ -699,6 +939,13 @@ def main() -> None:
     elif args.imperfect_initialization:
         perfect_initialization = False
 
+    if args.discard_rates is None and args.gap_threshold is None:
+        print('Error: at least one of --discard-rates or --gap-threshold must be specified.', file=sys.stderr)
+        return
+    if args.discard_rates is not None and args.gap_threshold is not None:
+        print('Error: Cannot specify both --discard-rates and --gap-threshold.', file=sys.stderr)
+        return
+
     print('  num-shots = {}'.format(args.num_shots))
     print('  error-probability = {}'.format(args.error_probability))
     print('  parallelism = {}'.format(args.parallelism))
@@ -712,7 +959,10 @@ def main() -> None:
     print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  num-epilogue-syndrome-extraction-rounds = {}'.format(args.num_epilogue_syndrome_extraction_rounds))
     print('  discard-rates = {}'.format(args.discard_rates))
+    print('  gap-threshold = {}'.format(args.gap_threshold))
     print('  print-circuit = {}'.format(args.print_circuit))
+    print('  construct-lookup-table = {}'.format(args.construct_lookup_table))
+    print('  lookup-table-min-samples = {}'.format(args.lookup_table_min_samples))
     print('  show-progress = {}'.format(args.show_progress))
 
     num_shots: int = args.num_shots
@@ -739,20 +989,36 @@ def main() -> None:
             steane_syndrome_extraction_pattern = SteaneSyndromeExtractionPattern.ZZ
         case _:
             assert False
-    if not re.compile(r'^\d+(\.\d+)?(,\d+(\.\d+)?)*$').match(args.discard_rates):
-        print('Error: --discard-rates must be a comma-separated list of numbers.', file=sys.stderr)
-        return
-    discard_rates = [float(x) for x in args.discard_rates.split(',')]
-    discard_rates.sort()
+    gap_threshold: float | None
+    discard_rates: list[float]
+    if args.gap_threshold is None:
+        gap_threshold = None
+        assert isinstance(args.discard_rates, str)
+        if not re.compile(r'^\d+(\.\d+)?(,\d+(\.\d+)?)*$').match(args.discard_rates):
+            print('Error: --discard-rates must be a comma-separated list of numbers.', file=sys.stderr)
+            return
+        discard_rates = [float(x) for x in args.discard_rates.split(',')]
+        discard_rates.sort()
+    else:
+        assert isinstance(args.gap_threshold, float)
+        assert args.discard_rates is None
+        gap_threshold = args.gap_threshold
+        discard_rates = []
 
     with_heulistic_post_selection: bool = args.with_heulistic_post_selection
     full_post_selection: bool = args.full_post_selection
     num_epilogue_syndrome_extraction_rounds: int = args.num_epilogue_syndrome_extraction_rounds
     print_circuit: bool = args.print_circuit
+    construct_lookup_table: bool = args.construct_lookup_table
+    lookup_table_min_samples: int = args.lookup_table_min_samples
     show_progress: bool = args.show_progress
 
     if not perfect_initialization and initial_value != InitialValue.SPlus:
         print('perfect-initialization=False is supported only for S+ initial value.', file=sys.stderr)
+        return
+
+    if construct_lookup_table and gap_threshold is None:
+        print('Error: --construct-lookup-table must be used with --gap-threshold.', file=sys.stderr)
         return
 
     mapping = QubitMapping(30, 40)
@@ -780,52 +1046,130 @@ def main() -> None:
     detector_for_complementary_gap = r.detector_for_complementary_gap
     assert detector_for_complementary_gap is not None
 
+    lookup_table_key = LookupTableKey(
+        error_probability=error_probability,
+        surface_intermediate_distance=surface_intermediate_distance,
+        surface_final_distance=surface_final_distance,
+        initial_value=initial_value.name,
+        perfect_initialization=perfect_initialization,
+        with_heulistic_post_selection=with_heulistic_post_selection,
+        full_post_selection=full_post_selection,
+        num_epilogue_syndrome_extraction_rounds=num_epilogue_syndrome_extraction_rounds,
+        gap_threshold=gap_threshold or 0)
+
+    lookup_table: LookupTableWithNegativeSamplesOnly | None = None
+    with sqlite3.connect('lookup_table.db') as lookup_table_con:
+        ensure_lookup_tables_table(lookup_table_con)
+
+        if construct_lookup_table:
+            assert gap_threshold is not None
+            if query_lookup_table(lookup_table_con, lookup_table_key) is not None:
+                print('Lookup table already exists. Skipping construction.')
+                return
+
+            print('Constructing the lookup table...')
+            table = parallel_construct_lookup_table(
+                primal_circuit,
+                partially_noiseless_circuit,
+                num_shots,
+                detector_for_complementary_gap,
+                r.num_detectors_for_lookup_table,
+                gap_threshold,
+                parallelism,
+                max_shots_per_task,
+                show_progress
+            )
+            print('len(table) = {}, num_samples = {}'.format(len(table), table.num_samples()))
+            lookup_table_to_store = table.negative_samples_only(lookup_table_min_samples)
+            print('Storing the lookup table of size {}...'.format(len(lookup_table_to_store)))
+            store_lookup_table(lookup_table_con, lookup_table_key, lookup_table_to_store)
+            return
+
+        if gap_threshold is not None:
+            lookup_table = query_lookup_table(lookup_table_con, lookup_table_key)
+            if lookup_table is None:
+                print('No lookup table is found.')
+            else:
+                print('A lookup table of size {} is found.'.format(len(lookup_table)))
+
     results = perform_parallel_simulation(
         primal_circuit,
         partially_noiseless_circuit,
         detector_for_complementary_gap,
         num_shots,
+        gap_threshold,
+        lookup_table,
+        r.num_detectors_for_lookup_table,
         parallelism,
         max_shots_per_task,
         show_progress)
 
-    num_discarded = results.num_discarded_samples
-    num_samples = len(results)
-    num_valid = sum([b.num_valid_samples for b in results.buckets])
-    num_wrong = sum([b.num_wrong_samples for b in results.buckets])
-    bucket_index = 0
-    for rate in discard_rates:
-        while True:
-            bucket = results.buckets[bucket_index]
-            if num_discarded + bucket.num_valid_samples + bucket.num_wrong_samples >= num_samples * rate:
-                break
+    if gap_threshold is None:
+        assert isinstance(results, SimulationResultsForDiscardRates)
+        num_discarded = results.num_discarded_samples
+        num_samples = len(results)
+        num_valid = sum([b.num_valid_samples for b in results.buckets])
+        num_wrong = sum([b.num_wrong_samples for b in results.buckets])
+        bucket_index = 0
+        for rate in discard_rates:
+            while True:
+                bucket = results.buckets[bucket_index]
+                if num_discarded + bucket.num_valid_samples + bucket.num_wrong_samples >= num_samples * rate:
+                    break
 
-            num_valid -= bucket.num_valid_samples
-            num_wrong -= bucket.num_wrong_samples
-            num_discarded += bucket.num_valid_samples + bucket.num_wrong_samples
-            bucket_index += 1
+                num_valid -= bucket.num_valid_samples
+                num_wrong -= bucket.num_wrong_samples
+                num_discarded += bucket.num_valid_samples + bucket.num_wrong_samples
+                bucket_index += 1
 
-        v = num_valid
-        w = num_wrong
-        d = num_discarded
-        num_to_be_discarded_additionally = num_samples * rate - num_discarded
-        if num_to_be_discarded_additionally > 0:
-            assert num_to_be_discarded_additionally <= bucket.num_valid_samples + bucket.num_wrong_samples
-            bucket_valid_rate = bucket.num_valid_samples / (bucket.num_valid_samples + bucket.num_wrong_samples)
-            bucket_wrong_rate = 1 - bucket_valid_rate
-            v -= round(num_to_be_discarded_additionally * bucket_valid_rate)
-            w -= round(num_to_be_discarded_additionally * bucket_wrong_rate)
-            assert abs(v + w + d + num_to_be_discarded_additionally - num_samples) < 3
-            d = num_samples - v - w
+            v = num_valid
+            w = num_wrong
+            d = num_discarded
+            num_to_be_discarded_additionally = num_samples * rate - num_discarded
+            if num_to_be_discarded_additionally > 0:
+                assert num_to_be_discarded_additionally <= bucket.num_valid_samples + bucket.num_wrong_samples
+                bucket_valid_rate = bucket.num_valid_samples / (bucket.num_valid_samples + bucket.num_wrong_samples)
+                bucket_wrong_rate = 1 - bucket_valid_rate
+                v -= round(num_to_be_discarded_additionally * bucket_valid_rate)
+                w -= round(num_to_be_discarded_additionally * bucket_wrong_rate)
+                assert abs(v + w + d + num_to_be_discarded_additionally - num_samples) < 3
+                d = num_samples - v - w
 
-        print('Discard {:.1f}% samples, VALID = {}, WRONG = {}, DISCARDED = {}, bucket_index = {}'.format(
-            rate * 100, v, w, d, bucket_index))
+            print('Discard {:.1f}% samples, VALID = {}, WRONG = {}, DISCARDED = {}, bucket_index = {}'.format(
+                rate * 100, v, w, d, bucket_index))
+            if num_valid + num_wrong == 0:
+                print('WRONG / (VALID + WRONG) = nan')
+            else:
+                print('WRONG / (VALID + WRONG) = {:.3e}'.format(w / (v + w)))
+            print('(VALID + WRONG) / SHOTS = {:.3f}'.format((v + w) / num_samples))
+            print()
+    else:
+        assert isinstance(results, SimulationResultsForGapThreshold)
+        print('Without lookup table:')
+        num_valid = results.num_valid_samples_without_lookup_table
+        num_wrong = results.num_wrong_samples_without_lookup_table
+        num_discarded = results.num_discarded_samples_without_lookup_table
+        num_samples = num_valid + num_wrong + num_discarded
+        print('  VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
         if num_valid + num_wrong == 0:
-            print('WRONG / (VALID + WRONG) = nan')
+            print('  WRONG / (VALID + WRONG) = nan')
         else:
-            print('WRONG / (VALID + WRONG) = {:.3e}'.format(w / (v + w)))
-        print('(VALID + WRONG) / SHOTS = {:.3f}'.format((v + w) / num_samples))
-        print()
+            print('  WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
+        print('  (VALID + WRONG) / SHOTS = {:.3f}'.format((num_valid + num_wrong) / num_samples))
+        print('With lookup table:')
+        num_valid = results.num_valid_samples_with_lookup_table
+        num_wrong = results.num_wrong_samples_with_lookup_table
+        num_discarded = results.num_discarded_samples_with_lookup_table
+        num_samples = num_valid + num_wrong + num_discarded
+        print('  VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
+        if num_valid + num_wrong == 0:
+            print('  WRONG / (VALID + WRONG) = nan')
+        else:
+            print('  WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
+        print('  (VALID + WRONG) / SHOTS = {:.3f}'.format((num_valid + num_wrong) / num_samples))
+        print('  NUM_DISCARDED_DUE_TO_LOOKUP_TABLE = {}'.format(results.num_discarded_due_to_lookup_table))
+        print('  NUM_DISCARDED_DUE_TO_LOOKUP_TABLE / SHOTS = {}'.format(
+            results.num_discarded_due_to_lookup_table / num_samples))
 
 
 if __name__ == '__main__':
