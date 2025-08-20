@@ -18,8 +18,6 @@ from concurrent.futures import ProcessPoolExecutor
 from enum import auto
 from util import QubitMapping, Circuit, MultiplexingCircuit
 from util import MeasurementIdentifier, DetectorIdentifier, ObservableIdentifier, SuppressNoise
-from steane_code import SteaneZ0145SyndromeMeasurement, SteaneZ0235SyndromeMeasurement, SteaneZ0246SyndromeMeasurement
-from steane_code import STEANE_0, STEANE_1, STEANE_2, STEANE_3, STEANE_4, STEANE_5, STEANE_6
 from surface_code import SurfaceStabilizerPattern, SurfaceSyndromeMeasurement
 from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
 from lookup_table import LookupTable, LookupTableKey, LookupTableWithNegativeSamplesOnly
