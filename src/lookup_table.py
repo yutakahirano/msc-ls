@@ -7,13 +7,15 @@ import sqlite3
 
 class LookupTableKey:
     def __init__(self, *, error_probability: float, surface_intermediate_distance: int, surface_final_distance: int,
-                 initial_value: str, perfect_initialization: bool, with_heulistic_post_selection: bool,
+                 initial_value: str, steane_syndrome_extraction_pattern: str,
+                 perfect_initialization: bool, with_heulistic_post_selection: bool,
                  full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int,
                  gap_threshold: float) -> None:
         self.error_probability = error_probability
         self.surface_intermediate_distance = surface_intermediate_distance
         self.surface_final_distance = surface_final_distance
         self.initial_value = initial_value
+        self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
         self.perfect_initialization = perfect_initialization
         self.with_heulistic_post_selection = with_heulistic_post_selection
         self.full_post_selection = full_post_selection
@@ -43,6 +45,7 @@ def ensure_lookup_tables_table(con: sqlite3.Connection) -> None:
             surface_intermediate_distance INTEGER,
             surface_final_distance INTEGER,
             initial_value TEXT,
+            steane_syndrome_extraction_pattern TEXT,
             perfect_initialization BOOLEAN,
             with_heulistic_post_selection BOOLEAN,
             full_post_selection BOOLEAN,
@@ -73,6 +76,7 @@ def query_lookup_table(con: sqlite3.Connection, key: LookupTableKey) -> LookupTa
         'surface_intermediate_distance = ? AND '
         'surface_final_distance = ? AND '
         'initial_value = ? AND '
+        'steane_syndrome_extraction_pattern = ? AND '
         'perfect_initialization = ? AND '
         'with_heulistic_post_selection = ? AND '
         'full_post_selection = ? AND '
@@ -82,6 +86,7 @@ def query_lookup_table(con: sqlite3.Connection, key: LookupTableKey) -> LookupTa
             key.surface_intermediate_distance,
             key.surface_final_distance,
             key.initial_value,
+            key.steane_syndrome_extraction_pattern,
             key.perfect_initialization,
             key.with_heulistic_post_selection,
             key.full_post_selection,
@@ -108,14 +113,15 @@ def store_lookup_table(
 
     cur.execute(
         'INSERT INTO lookup_tables (error_probability, surface_intermediate_distance, surface_final_distance, '
-        'initial_value, perfect_initialization, with_heulistic_post_selection, full_post_selection, '
-        'num_epilogue_syndrome_extraction_rounds, gap_threshold, lookup_table_blob) VALUES '
-        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'initial_value, steane_syndrome_extraction_pattern, perfect_initialization, with_heulistic_post_selection,'
+        'full_post_selection, num_epilogue_syndrome_extraction_rounds, gap_threshold, lookup_table_blob) VALUES '
+        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
             key.error_probability,
             key.surface_intermediate_distance,
             key.surface_final_distance,
             key.initial_value,
+            key.steane_syndrome_extraction_pattern,
             key.perfect_initialization,
             key.with_heulistic_post_selection,
             key.full_post_selection,

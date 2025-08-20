@@ -1051,6 +1051,7 @@ def main() -> None:
         surface_intermediate_distance=surface_intermediate_distance,
         surface_final_distance=surface_final_distance,
         initial_value=initial_value.name,
+        steane_syndrome_extraction_pattern=steane_syndrome_extraction_pattern.name,
         perfect_initialization=perfect_initialization,
         with_heulistic_post_selection=with_heulistic_post_selection,
         full_post_selection=full_post_selection,
