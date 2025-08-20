@@ -6,6 +6,9 @@ import stim
 from typing import Any
 
 
+POST_SELECTION_TAG: str = 'POST-SELECTION'
+
+
 class QubitMapping:
     '''A mapping between qubit IDs and coordinates.'''
     def __init__(self, width: int, height: int):
@@ -227,10 +230,11 @@ class Circuit:
         return MeasurementIdentifier(self.circuit.num_measurements - 1)
 
     def place_detector(
-            self, measurements: list[MeasurementIdentifier], post_selection: bool = False) -> DetectorIdentifier:
+            self, measurements: list[MeasurementIdentifier], post_selection: bool = False,
+            tag: str = '') -> DetectorIdentifier:
         '''Places a detector with the given measurements.'''
         circuit = self.circuit
-        self.circuit.append('DETECTOR', [i.target_rec(self) for i in measurements])
+        self.circuit.append('DETECTOR', [i.target_rec(self) for i in measurements], tag=tag)
         id = DetectorIdentifier(self.circuit.num_detectors - 1)
         if post_selection:
             self.detectors_for_post_selection.append(id)
@@ -305,9 +309,10 @@ class MultiplexingCircuit:
         return m1
 
     def place_detector(
-            self, measurements: list[MeasurementIdentifier], post_selection: bool = False) -> DetectorIdentifier:
-        d1 = self.circuit1.place_detector(measurements, post_selection)
-        d2 = self.circuit2.place_detector(measurements, post_selection)
+            self, measurements: list[MeasurementIdentifier], post_selection: bool = False,
+            tag: str = '') -> DetectorIdentifier:
+        d1 = self.circuit1.place_detector(measurements, post_selection, tag=tag)
+        d2 = self.circuit2.place_detector(measurements, post_selection, tag=tag)
         assert d1 == d2
         return d1
 

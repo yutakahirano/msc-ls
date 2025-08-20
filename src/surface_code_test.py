@@ -126,7 +126,7 @@ class SurfaceZSyndromeMeasurementTest(unittest.TestCase):
             CX 133 33
             TICK
             M 33
-            DETECTOR rec[-2] rec[-1]'''))
+            DETECTOR[SURFACE-Z] rec[-2] rec[-1]'''))
         self.assertEqual(circuit.detectors_for_post_selection, [])
         m.set_post_selection(True)
 
@@ -159,7 +159,7 @@ class SurfaceZSyndromeMeasurementTest(unittest.TestCase):
             CX 133 33
             TICK
             M 33
-            DETECTOR rec[-2] rec[-1]
+            DETECTOR[SURFACE-Z] rec[-2] rec[-1]
             TICK
             R 33
             TICK
@@ -172,7 +172,7 @@ class SurfaceZSyndromeMeasurementTest(unittest.TestCase):
             CX 133 33
             TICK
             M 33
-            DETECTOR rec[-2] rec[-1]'''))
+            DETECTOR[SURFACE-Z] rec[-2] rec[-1]'''))
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(1)])
 
     def test_run_up(self) -> None:
@@ -653,7 +653,7 @@ class SurfaceXSyndromeMeasurementTest(unittest.TestCase):
             CX 33 133
             TICK
             MX 33
-            DETECTOR rec[-2] rec[-1]'''))
+            DETECTOR[SURFACE-X] rec[-2] rec[-1]'''))
         self.assertEqual(circuit.detectors_for_post_selection, [])
         m.set_post_selection(True)
 
@@ -686,7 +686,7 @@ class SurfaceXSyndromeMeasurementTest(unittest.TestCase):
             CX 33 133
             TICK
             MX 33
-            DETECTOR rec[-2] rec[-1]
+            DETECTOR[SURFACE-X] rec[-2] rec[-1]
             TICK
             RX 33
             TICK
@@ -699,7 +699,7 @@ class SurfaceXSyndromeMeasurementTest(unittest.TestCase):
             CX 33 133
             TICK
             MX 33
-            DETECTOR rec[-2] rec[-1]'''))
+            DETECTOR[SURFACE-X] rec[-2] rec[-1]'''))
 
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(1)])
 

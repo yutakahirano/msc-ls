@@ -42,7 +42,8 @@ class SteanePlusSurfaceCode:
                  initial_value: InitialValue, steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern,
                  perfect_initialization: bool,
                  error_probability: float, with_heulistic_post_selection: bool,
-                 full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int) -> None:
+                 full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int,
+                 skip_detector_for_complementary_gap: bool) -> None:
         self.mapping = mapping
         self.surface_intermediate_distance = surface_intermediate_distance
         self.surface_distance = surface_intermediate_distance
@@ -68,6 +69,7 @@ class SteanePlusSurfaceCode:
         self.surface_offset_y = 17
         self.detector_for_complementary_gap: DetectorIdentifier | None = None
         self.num_detectors_for_lookup_table: int = -1
+        self.skip_detector_for_complementary_gap = skip_detector_for_complementary_gap
 
         self._setup_syndrome_measurements()
 
@@ -462,18 +464,21 @@ class SteanePlusSurfaceCode:
                 case InitialValue.Plus:
                     ms.append(circuit.place_mpp(self._logical_x_pauli_string()))
                     ms.extend(ls_results.logical_x_measurements())
-                    self.detector_for_complementary_gap = circuit.place_detector(ms)
+                    if not self.skip_detector_for_complementary_gap:
+                        self.detector_for_complementary_gap = circuit.place_detector(ms)
                     circuit.place_observable_include(ms)
                 case InitialValue.Zero:
                     ms.append(circuit.place_mpp(self._logical_z_pauli_string()))
                     ms.extend(ls_results.lattice_surgery_zz_measurements())
-                    self.detector_for_complementary_gap = circuit.place_detector(ms)
+                    if not self.skip_detector_for_complementary_gap:
+                        self.detector_for_complementary_gap = circuit.place_detector(ms)
                     circuit.place_observable_include(ms)
                 case InitialValue.SPlus:
                     ms.append(circuit.place_mpp(self._logical_y_pauli_string()))
                     ms.extend(ls_results.logical_x_measurements())
                     ms.extend(ls_results.lattice_surgery_zz_measurements())
-                    self.detector_for_complementary_gap = circuit.place_detector(ms)
+                    if not self.skip_detector_for_complementary_gap:
+                        self.detector_for_complementary_gap = circuit.place_detector(ms)
                     circuit.place_observable_include(ms)
 
     def _logical_x_pauli_string(self) -> stim.PauliString:
@@ -753,7 +758,6 @@ def perform_simulation(
         detector_for_complementary_gap: DetectorIdentifier,
         seed: int | None,
         detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
-
     # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
     # non-matchable detectors. We perform post-selection for all detectors in the Steane code, so the difference
     # between the two DEMs should be small...
@@ -923,6 +927,7 @@ def main() -> None:
     parser.add_argument('--print-circuit', action='store_true')
     parser.add_argument('--construct-lookup-table', action='store_true')
     parser.add_argument('--lookup-table-min-samples', type=int, default=100)
+    parser.add_argument('--skip-detector-for-complementary-gap', action='store_true')
     parser.add_argument('--show-progress', action='store_true')
 
     args = parser.parse_args()
@@ -961,6 +966,7 @@ def main() -> None:
     print('  print-circuit = {}'.format(args.print_circuit))
     print('  construct-lookup-table = {}'.format(args.construct_lookup_table))
     print('  lookup-table-min-samples = {}'.format(args.lookup_table_min_samples))
+    print('  skip-detector-for-complementary-gap = {}'.format(args.skip_detector_for_complementary_gap))
     print('  show-progress = {}'.format(args.show_progress))
 
     num_shots: int = args.num_shots
@@ -1009,6 +1015,7 @@ def main() -> None:
     print_circuit: bool = args.print_circuit
     construct_lookup_table: bool = args.construct_lookup_table
     lookup_table_min_samples: int = args.lookup_table_min_samples
+    skip_detector_for_complementary_gap: bool = args.skip_detector_for_complementary_gap
     show_progress: bool = args.show_progress
 
     if not perfect_initialization and initial_value != InitialValue.SPlus:
@@ -1024,13 +1031,13 @@ def main() -> None:
         mapping, surface_intermediate_distance, surface_final_distance, initial_value,
         steane_syndrome_extraction_pattern,
         perfect_initialization, error_probability, with_heulistic_post_selection, full_post_selection,
-        num_epilogue_syndrome_extraction_rounds)
+        num_epilogue_syndrome_extraction_rounds, skip_detector_for_complementary_gap)
     primal_circuit = r.primal_circuit
     partially_noiseless_circuit = r.partially_noiseless_circuit
     stim_circuit = primal_circuit.circuit
     r.run()
     if print_circuit:
-        print(partially_noiseless_circuit.circuit)
+        print(primal_circuit.circuit)
 
     # Assert that the circuit have deterministic detectors.
     # The primal circuit has a non-graph-like DEM.

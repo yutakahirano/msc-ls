@@ -218,9 +218,9 @@ class SteaneZ0145SyndromeMeasurementTest(unittest.TestCase):
         CX 156 22
         TICK
         MX 156
-        DETECTOR rec[-1]
+        DETECTOR[POST-SELECTION] rec[-1]
         M 22
-        DETECTOR rec[-1]''')
+        DETECTOR[POST-SELECTION] rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(0), DetectorIdentifier(1)])
 
@@ -716,9 +716,9 @@ class SteaneZ0235SyndromeMeasurementTest(unittest.TestCase):
         CX 186 37
         TICK
         MX 186
-        DETECTOR rec[-1]
+        DETECTOR[POST-SELECTION] rec[-1]
         M 37
-        DETECTOR rec[-1]''')
+        DETECTOR[POST-SELECTION] rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [DetectorIdentifier(0), DetectorIdentifier(1)])
 
@@ -1241,11 +1241,11 @@ class SteaneZ0246SyndromeMeasurementTest(unittest.TestCase):
         CX 185 36
         TICK
         M 36
-        DETECTOR rec[-1]
+        DETECTOR[POST-SELECTION] rec[-1]
         MX 170
-        DETECTOR rec[-1]
+        DETECTOR[POST-SELECTION] rec[-1]
         MX 185
-        DETECTOR rec[-1]''')
+        DETECTOR[POST-SELECTION] rec[-1]''')
         self.assertEqual(str(circuit.circuit), expectation)
         self.assertEqual(circuit.detectors_for_post_selection, [
             DetectorIdentifier(0), DetectorIdentifier(1), DetectorIdentifier(2)

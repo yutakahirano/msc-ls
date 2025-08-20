@@ -7,6 +7,10 @@ from collections.abc import Callable
 from util import Circuit, MeasurementIdentifier, MultiplexingCircuit
 
 
+SURFACE_X_TAG: str = 'SURFACE-X'
+SURFACE_Z_TAG: str = 'SURFACE-Z'
+
+
 class SurfaceStabilizerPattern(enum.Enum):
     '''Represents a stabilizer pattern for the surface code.'''
     FOUR_WEIGHT = auto(),
@@ -35,6 +39,7 @@ class SurfaceZSyndromeMeasurement:
         self.last_measurement: MeasurementIdentifier | None = None
         self.post_selection = False
         self.already_satisfied = already_satisfied
+        self.detector_tag = SURFACE_Z_TAG
 
         (x, y) = ancilla_position
         left_top = (x - 1, y - 1)
@@ -97,6 +102,9 @@ class SurfaceZSyndromeMeasurement:
 
     def set_post_selection(self, post_selection: bool) -> None:
         self.post_selection = post_selection
+
+    def set_detector_tag(self, tag: str) -> None:
+        self.detector_tag = tag
 
     def is_complete(self) -> bool:
         '''\
@@ -120,9 +128,9 @@ class SurfaceZSyndromeMeasurement:
         i = self.circuit.place_measurement_z(self._ancilla_position)
         if last is None:
             if self.already_satisfied:
-                self.circuit.place_detector([i], post_selection=self.post_selection)
+                self.circuit.place_detector([i], post_selection=self.post_selection, tag=self.detector_tag)
         else:
-            self.circuit.place_detector([last, i], post_selection=self.post_selection)
+            self.circuit.place_detector([last, i], post_selection=self.post_selection, tag=self.detector_tag)
         self.last_measurement = i
 
 
@@ -146,6 +154,7 @@ class SurfaceXSyndromeMeasurement:
         self.last_measurement: MeasurementIdentifier | None = None
         self.post_selection = False
         self.already_satisfied = already_satisfied
+        self.detector_tag: str = SURFACE_X_TAG
 
         (x, y) = ancilla_position
         left_top = (x - 1, y - 1)
@@ -209,6 +218,9 @@ class SurfaceXSyndromeMeasurement:
     def set_post_selection(self, post_selection: bool) -> None:
         self.post_selection = post_selection
 
+    def set_detector_tag(self, tag: str) -> None:
+        self.detector_tag = tag
+
     def is_complete(self) -> bool:
         '''\
         Returns True if the current syndrome measurement process has completed
@@ -231,9 +243,9 @@ class SurfaceXSyndromeMeasurement:
         i = self.circuit.place_measurement_x(self._ancilla_position)
         if last is None:
             if self.already_satisfied:
-                self.circuit.place_detector([i], post_selection=self.post_selection)
+                self.circuit.place_detector([i], post_selection=self.post_selection, tag=self.detector_tag)
         else:
-            self.circuit.place_detector([last, i], post_selection=self.post_selection)
+            self.circuit.place_detector([last, i], post_selection=self.post_selection, tag=self.detector_tag)
         self.last_measurement = i
 
 

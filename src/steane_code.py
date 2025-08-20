@@ -6,7 +6,7 @@ import util
 from collections.abc import Generator
 from surface_code import SurfaceZSyndromeMeasurement
 from typing import Literal
-from util import Circuit, MultiplexingCircuit, QubitMapping, MeasurementIdentifier
+from util import Circuit, MultiplexingCircuit, QubitMapping, MeasurementIdentifier, POST_SELECTION_TAG
 
 # These coordinates are hardcoded.
 STEANE_0 = (3, 13)
@@ -142,9 +142,9 @@ class SteaneZ0145SyndromeMeasurement:
             if circuit.is_tainted_by_position(*ancilla_a) or circuit.is_tainted_by_position(*ancilla_b):
                 return False
             i = circuit.place_measurement_x(ancilla_a)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
             i = circuit.place_measurement_z(ancilla_b)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
             self.has_measured_ancillae = True
         return True
 
@@ -271,9 +271,9 @@ class SteaneZ0235SyndromeMeasurement:
             if circuit.is_tainted_by_position(*ancilla_a) or circuit.is_tainted_by_position(*ancilla_b):
                 return False
             i = circuit.place_measurement_x(ancilla_a)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
             i = circuit.place_measurement_z(ancilla_b)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
             self.has_measured_ancillae = True
         return True
 
@@ -403,11 +403,11 @@ class SteaneZ0246SyndromeMeasurement:
                circuit.is_tainted_by_position(*ancilla_c):
                 return False
             i = circuit.place_measurement_z(ancilla_a)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
             i = circuit.place_measurement_x(ancilla_b)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
             i = circuit.place_measurement_x(ancilla_c)
-            circuit.place_detector([i], post_selection=True)
+            circuit.place_detector([i], post_selection=True, tag=POST_SELECTION_TAG)
 
             self.has_measured_ancillae = True
         return True
@@ -684,15 +684,15 @@ def xz_syndrome_extraction_after_injection_generator(
     yield
 
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x((1, 13))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((2, 14))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((0, 14))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((1, 13))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((2, 14))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((0, 14))], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x((4, 14))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((5, 13))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((4, 14))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((5, 13))], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x((3, 11))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((4, 12))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((3, 11))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((4, 12))], post_selection=True, tag=POST_SELECTION_TAG)
 
 
 def perform_xz_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -803,16 +803,16 @@ def zx_syndrome_extraction_after_injection_generator(
     yield
 
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x((1, 13))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((2, 14))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((0, 14))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((1, 13))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((2, 14))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((0, 14))], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x((4, 14))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((5, 13))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((4, 14))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((5, 13))], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x((3, 11))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z((4, 12))], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_x((5, 11))], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x((3, 11))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z((4, 12))], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_x((5, 11))], post_selection=True, tag=POST_SELECTION_TAG)
 
 
 def perform_zx_syndrome_extraction_after_injection(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -862,7 +862,7 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
     yield
 
     m = circuit.place_measurement_x((3, 13))
-    circuit.place_detector([m], post_selection=True)
+    circuit.place_detector([m], post_selection=True, tag=POST_SELECTION_TAG)
     yield
 
     circuit.place_reset_x((3, 13))
@@ -898,7 +898,7 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
 
     for pos in [(3, 11), (4, 12), (5, 13), (4, 14), (1, 13), (2, 14)]:
         m = circuit.place_measurement_x(pos)
-        circuit.place_detector([m], post_selection=True)
+        circuit.place_detector([m], post_selection=True, tag=POST_SELECTION_TAG)
 
 
 def perform_check(circuit: Circuit | MultiplexingCircuit) -> None:
@@ -926,11 +926,11 @@ def perform_tomography_after_check_stage(circuit: Circuit | MultiplexingCircuit)
 
     for positions in stabilizer_positions:
         m = circuit.place_mpp(pauli_string('X', positions))
-        circuit.place_detector([m], post_selection=True)
+        circuit.place_detector([m], post_selection=True, tag=POST_SELECTION_TAG)
         circuit.place_tick()
 
         m = circuit.place_mpp(pauli_string('Z', positions))
-        circuit.place_detector([m], post_selection=True)
+        circuit.place_detector([m], post_selection=True, tag=POST_SELECTION_TAG)
         circuit.place_tick()
 
     m = circuit.place_mpp(pauli_string('Y', [STEANE_1, STEANE_3, STEANE_5]))
@@ -992,6 +992,7 @@ def lattice_surgery_generator_xzz(
     ]
     for m in ls_syndrome_measurements:
         m.set_post_selection(True)
+        m.set_detector_tag(POST_SELECTION_TAG)
     # Note that the leftmost syndrome measurement is not included in `ls_surface_syndrome_measurements`.
     assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
@@ -1131,16 +1132,16 @@ def lattice_surgery_generator_xzz(
 
     # Measurements:
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True, tag=POST_SELECTION_TAG)
 
-    circuit.place_detector([circuit.place_measurement_z(STEANE_2_)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_z(STEANE_2_)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # Now we have completed the Z-X syndrome measurements on the Steane code.
 
@@ -1181,7 +1182,8 @@ def lattice_surgery_generator_xzz(
     # The second round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
     left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
-    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_reset_z(A_1A_R)
     # Surface(2)
     for m in ls_syndrome_measurements:
@@ -1236,7 +1238,8 @@ def lattice_surgery_generator_xzz(
 
     prev_left_boundary_measurement = left_boundary_measurement
     left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
-    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
     # Surface(5); The last cycle of the second round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
@@ -1259,14 +1262,14 @@ def lattice_surgery_generator_xzz(
 
     # Measurements:
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # Surface(1); STEANE_5, SURFACE_A, and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
@@ -1303,9 +1306,12 @@ def lattice_surgery_generator_xzz(
         assert m.last_measurement is not None
         boundary_measurements.append(m.last_measurement)
 
-    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
-    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
-    circuit.place_detector([m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True)
+    circuit.place_detector(
+        [m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector(
+        [m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector(
+        [m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True, tag=POST_SELECTION_TAG)
 
     results._lattice_surgery_zz_measurements = boundary_measurements
     results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
@@ -1344,6 +1350,7 @@ def lattice_surgery_generator_zxz(
     ]
     for m in ls_syndrome_measurements:
         m.set_post_selection(True)
+        m.set_detector_tag(POST_SELECTION_TAG)
     # Note that the leftmost syndrome measurement is not included in `ls_surface_syndrome_measurements`.
     assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
@@ -1456,8 +1463,8 @@ def lattice_surgery_generator_zxz(
     yield
 
     # Measuring ancillae for Z0145:
-    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # CX(5)
     # For 0235
@@ -1510,13 +1517,13 @@ def lattice_surgery_generator_zxz(
 
     # Measurements:
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True, tag=POST_SELECTION_TAG)
 
-    circuit.place_detector([circuit.place_measurement_x(STEANE_2_)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(STEANE_2_)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # Now we have completed the Z-X syndrome measurements on the Steane code.
 
@@ -1543,7 +1550,8 @@ def lattice_surgery_generator_zxz(
     # The second round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
     left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
-    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
 
     circuit.place_cx(STEANE_1, A_1A_R)
     # Surface(4)
@@ -1585,7 +1593,8 @@ def lattice_surgery_generator_zxz(
     # The third round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
     left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
-    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
 
     # We are starting the third round of the lattice surgery Z syndrome measurements.
     # Surface(0)
@@ -1594,8 +1603,8 @@ def lattice_surgery_generator_zxz(
     yield
 
     # Measuring ancillae for Z0145:
-    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # CX(2)
     # For 0235
@@ -1643,11 +1652,11 @@ def lattice_surgery_generator_zxz(
 
     # Measurements:
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True, tag=POST_SELECTION_TAG)
 
     circuit.place_cx(A_AB, SURFACE_B)
     # Surface(4)
@@ -1665,9 +1674,12 @@ def lattice_surgery_generator_zxz(
         assert m.last_measurement is not None
         boundary_measurements.append(m.last_measurement)
 
-    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
-    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
-    circuit.place_detector([m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True)
+    circuit.place_detector(
+        [m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector(
+        [m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector(
+        [m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True, tag=POST_SELECTION_TAG)
 
     results._lattice_surgery_zz_measurements = boundary_measurements
     results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
@@ -1702,6 +1714,7 @@ def lattice_surgery_generator_zz(
     ]
     for m in ls_syndrome_measurements:
         m.set_post_selection(True)
+        m.set_detector_tag(POST_SELECTION_TAG)
     # Note that the leftmost syndrome measurement is not included in `ls_surface_syndrome_measurements`.
     assert len(ls_syndrome_measurements) == (surface_distance - 1) // 2
 
@@ -1807,16 +1820,16 @@ def lattice_surgery_generator_zz(
 
     # Measurements:
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True, tag=POST_SELECTION_TAG)
 
-    # circuit.place_detector([circuit.place_measurement_z(STEANE_2_)], post_selection=True)
+    # circuit.place_detector([circuit.place_measurement_z(STEANE_2_)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # Now we have completed the Z-X syndrome measurements on the Steane code.
     circuit.place_cx(SURFACE_A, A_1A_L)
@@ -1856,7 +1869,8 @@ def lattice_surgery_generator_zz(
     # The second round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
     left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
-    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_reset_z(A_1A_R)
     # Surface(2)
     for m in ls_syndrome_measurements:
@@ -1911,7 +1925,8 @@ def lattice_surgery_generator_zz(
 
     prev_left_boundary_measurement = left_boundary_measurement
     left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
-    circuit.place_detector([prev_left_boundary_measurement, left_boundary_measurement], post_selection=True)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
     # Surface(5); The last cycle of the second round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
@@ -1934,14 +1949,14 @@ def lattice_surgery_generator_zz(
 
     # Measurements:
     # For 0145
-    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0235
-    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0235_035)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0235_2)], post_selection=True, tag=POST_SELECTION_TAG)
     # For 0246
-    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True)
-    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True)
+    circuit.place_detector([circuit.place_measurement_x(A_0246_46)], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector([circuit.place_measurement_z(A_0246_02)], post_selection=True, tag=POST_SELECTION_TAG)
 
     # Surface(1); STEANE_5, SURFACE_A, and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
@@ -1978,9 +1993,12 @@ def lattice_surgery_generator_zz(
         assert m.last_measurement is not None
         boundary_measurements.append(m.last_measurement)
 
-    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True)
-    circuit.place_detector([m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True)
-    circuit.place_detector([m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True)
+    circuit.place_detector(
+        [m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector(
+        [m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_detector(
+        [m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True, tag=POST_SELECTION_TAG)
 
     results._lattice_surgery_zz_measurements = boundary_measurements
     results._logical_x_measurements = [m_steane_1, m_steane_4, m_steane_6]
