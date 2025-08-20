@@ -1391,7 +1391,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0246_46, A_0246_02)
     circuit.place_cx(STEANE_2, STEANE_2_)  # Moving the qubit 2 to (5, 11).
 
-    circuit.place_reset_z(A_1A_R)
+    circuit.place_reset_z(A_1A_L)
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
@@ -1406,7 +1406,7 @@ def lattice_surgery_generator_zxz(
     # For 0246
     circuit.place_cx(STEANE_6, A_0246_46)
 
-    circuit.place_cx(STEANE_1, A_1A_R)
+    circuit.place_cx(STEANE_1, A_1A_L)
     # Surface(2)
     for m in ls_syndrome_measurements:
         m.run()
@@ -1422,7 +1422,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(STEANE_0, A_0246_02)
     circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved to (5, 11).
 
-    circuit.place_cx(SURFACE_A, A_1A_R)
+    circuit.place_cx(SURFACE_A, A_1A_L)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
@@ -1438,7 +1438,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(STEANE_2_, A_0246_02)
     circuit.place_reset_x(STEANE_2)
 
-    left_boundary_measurement: MeasurementIdentifier = circuit.place_measurement_z(A_1A_R)
+    left_boundary_measurement: MeasurementIdentifier = circuit.place_measurement_z(A_1A_L)
     # Surface(4)
     for m in ls_syndrome_measurements:
         m.run()
@@ -1491,7 +1491,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0246_46, STEANE_4)
     circuit.place_cx(A_0246_02, STEANE_0)
 
-    circuit.place_reset_z(A_1A_L)
+    circuit.place_reset_z(A_1A_R)
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
@@ -1505,7 +1505,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0246_46, A_0246_02)
     circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved back to (6, 12).
 
-    circuit.place_cx(STEANE_1, A_1A_L)
+    circuit.place_cx(STEANE_1, A_1A_R)
     # Surface(2)
     for m in ls_syndrome_measurements:
         m.run()
@@ -1527,8 +1527,8 @@ def lattice_surgery_generator_zxz(
 
     # Now we have completed the Z-X syndrome measurements on the Steane code.
 
-    circuit.place_cx(SURFACE_A, A_1A_L)
-    circuit.place_reset_z(A_1A_R)
+    circuit.place_cx(SURFACE_A, A_1A_R)
+    circuit.place_reset_z(A_1A_L)
 
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
@@ -1549,11 +1549,11 @@ def lattice_surgery_generator_zxz(
 
     # The second round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
-    left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
     circuit.place_detector(
         [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
 
-    circuit.place_cx(STEANE_1, A_1A_R)
+    circuit.place_cx(STEANE_1, A_1A_L)
     # Surface(4)
     for m in ls_syndrome_measurements:
         m.run()
@@ -1571,7 +1571,7 @@ def lattice_surgery_generator_zxz(
 
     m_steane_1 = circuit.place_measurement_x(STEANE_1)
 
-    circuit.place_cx(SURFACE_A, A_1A_R)
+    circuit.place_cx(SURFACE_A, A_1A_L)
     # Surface(5); The last cycle of the second round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
@@ -1592,7 +1592,7 @@ def lattice_surgery_generator_zxz(
 
     # The third round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
-    left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_L)
     circuit.place_detector(
         [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
 
