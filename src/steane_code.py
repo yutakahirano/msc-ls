@@ -1534,7 +1534,7 @@ def lattice_surgery_generator_zxz(
     # Now we have completed the Z-X syndrome measurements on the Steane code.
 
     circuit.place_reset_z(A_1A_L)
-
+    circuit.place_reset_x(A_1A_R)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
@@ -1545,14 +1545,15 @@ def lattice_surgery_generator_zxz(
 
     # Let's start another Z syndrome measurement round on the Steane code.
     # For 0235
-    circuit.place_reset_x(A_0235_035)
-    circuit.place_reset_z(A_0235_2)
+    circuit.place_reset_x(A_0235_2)
+    circuit.place_reset_z(A_0235_035)
     # For 0246
     circuit.place_reset_x(A_0246_46)
     circuit.place_reset_z(A_0246_02)
     circuit.place_reset_z(STEANE_2_)
 
-    circuit.place_cx(STEANE_1, A_1A_L)
+    circuit.place_cx(SURFACE_A, A_1A_L)
+    circuit.place_cx(A_1A_R, SURFACE_B)
     # Surface(4)
     for m in ls_syndrome_measurements:
         m.run()
@@ -1561,16 +1562,16 @@ def lattice_surgery_generator_zxz(
     # CX(3) for Z0145:
     circuit.place_cx(STEANE_0, A_0145_015)
 
-    # Entangling ancillae.
     # For 0235
-    circuit.place_cx(A_0235_035, A_0235_2)
+    circuit.place_cx(STEANE_5, A_0235_035)
+
+    # Entangling ancillae.
     # For 0246
     circuit.place_cx(A_0246_46, A_0246_02)
     circuit.place_cx(STEANE_2, STEANE_2_)  # An X error on STEANE_2 is copied to STEANE_2_.
 
-    m_steane_1 = circuit.place_measurement_x(STEANE_1)
-
-    circuit.place_cx(SURFACE_A, A_1A_L)
+    circuit.place_cx(STEANE_1, A_1A_L)
+    circuit.place_cx(A_1A_R, SURFACE_A)
     # Surface(5); The last cycle of the second round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
@@ -1582,12 +1583,15 @@ def lattice_surgery_generator_zxz(
     # Disentangling ancillae for Z0145:
     circuit.place_cx(A_0145_4, A_0145_015)
 
-    # CX(1)
     # For 0235
-    circuit.place_cx(STEANE_5, A_0235_035)
+    circuit.place_cx(A_0235_2, A_0235_035)
+
+    # CX(1)
     # # For 0246
     circuit.place_cx(STEANE_6, A_0246_46)
     circuit.place_cx(STEANE_0, A_0246_02)
+
+    m_steane_1 = circuit.place_measurement_x(STEANE_1)
 
     # The third round of the leftmost lattice surgery Z syndrome measurement.
     prev_left_boundary_measurement = left_boundary_measurement
@@ -1595,6 +1599,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_detector(
         [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
 
+    circuit.place_cx(A_1A_R, STEANE_5)
     # We are starting the third round of the lattice surgery Z syndrome measurements.
     # Surface(0)
     for m in ls_syndrome_measurements:
@@ -1615,6 +1620,7 @@ def lattice_surgery_generator_zxz(
 
     m_steane_6 = circuit.place_measurement_x(STEANE_6)
 
+    m_ba5 = circuit.place_measurement_x(A_1A_R)
     # Surface(1); STEANE_5, SURFACE_A, and SURFACE_B are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
@@ -1677,6 +1683,10 @@ def lattice_surgery_generator_zxz(
         [m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_detector(
         [m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True, tag=POST_SELECTION_TAG)
+    ### !!!
+    ### Adding this detector regresses the logical error rate.
+    circuit.place_detector(
+        [m_steane_0, m_steane_1, m_steane_4, m_ba5], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_detector(
         [m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True, tag=POST_SELECTION_TAG)
 
