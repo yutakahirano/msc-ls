@@ -1541,7 +1541,7 @@ def lattice_surgery_generator_zxz(
     yield
 
     # CX(2) for Z0145:
-    circuit.place_cx(STEANE_0, A_0145_015)
+    circuit.place_cx(STEANE_5, A_0145_015)
 
     # Let's start another Z syndrome measurement round on the Steane code.
     # For 0235
@@ -1559,7 +1559,7 @@ def lattice_surgery_generator_zxz(
     yield
 
     # CX(3) for Z0145:
-    circuit.place_cx(STEANE_5, A_0145_015)
+    circuit.place_cx(STEANE_0, A_0145_015)
 
     # Entangling ancillae.
     # For 0235
