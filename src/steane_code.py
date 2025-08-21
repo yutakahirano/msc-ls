@@ -1571,7 +1571,6 @@ def lattice_surgery_generator_zxz(
     m_steane_1 = circuit.place_measurement_x(STEANE_1)
 
     circuit.place_cx(SURFACE_A, A_1A_L)
-    circuit.place_reset_x(A_1A_R)
     # Surface(5); The last cycle of the second round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
