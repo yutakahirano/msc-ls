@@ -1455,6 +1455,7 @@ def lattice_surgery_generator_zxz(
     # For 0246
     circuit.place_cx(A_0246_02, STEANE_2_)
 
+    circuit.place_reset_z(A_1A_R)
     # Surface (5); The last cycle of the first round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
@@ -1473,6 +1474,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0246_46, STEANE_6)
     circuit.place_cx(STEANE_2, STEANE_2_)  # Moving the qubit 2 back to (6, 12).
 
+    circuit.place_cx(SURFACE_A, A_1A_R)
     # We are starting the second round of the lattice surgery Z syndrome measurements.
     # Surface(0)
     for m in ls_syndrome_measurements:
@@ -1491,7 +1493,7 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0246_46, STEANE_4)
     circuit.place_cx(A_0246_02, STEANE_0)
 
-    circuit.place_reset_z(A_1A_R)
+    circuit.place_cx(STEANE_1, A_1A_R)
     # Surface(1); STEANE_5 and SURFACE_A are accessed by the corresponding surface syndrome measurement.
     for m in ls_syndrome_measurements:
         m.run()
@@ -1505,7 +1507,11 @@ def lattice_surgery_generator_zxz(
     circuit.place_cx(A_0246_46, A_0246_02)
     circuit.place_cx(STEANE_2_, STEANE_2)  # Now the qubit 2 is moved back to (6, 12).
 
-    circuit.place_cx(STEANE_1, A_1A_R)
+    # The second round of the leftmost lattice surgery Z syndrome measurement.
+    prev_left_boundary_measurement = left_boundary_measurement
+    left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
+    circuit.place_detector(
+        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
     # Surface(2)
     for m in ls_syndrome_measurements:
         m.run()
@@ -1527,7 +1533,6 @@ def lattice_surgery_generator_zxz(
 
     # Now we have completed the Z-X syndrome measurements on the Steane code.
 
-    circuit.place_cx(SURFACE_A, A_1A_R)
     circuit.place_reset_z(A_1A_L)
 
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
@@ -1546,12 +1551,6 @@ def lattice_surgery_generator_zxz(
     circuit.place_reset_x(A_0246_46)
     circuit.place_reset_z(A_0246_02)
     circuit.place_reset_z(STEANE_2_)
-
-    # The second round of the leftmost lattice surgery Z syndrome measurement.
-    prev_left_boundary_measurement = left_boundary_measurement
-    left_boundary_measurement = circuit.place_measurement_z(A_1A_R)
-    circuit.place_detector(
-        [prev_left_boundary_measurement, left_boundary_measurement], post_selection=True, tag=POST_SELECTION_TAG)
 
     circuit.place_cx(STEANE_1, A_1A_L)
     # Surface(4)
@@ -1572,6 +1571,7 @@ def lattice_surgery_generator_zxz(
     m_steane_1 = circuit.place_measurement_x(STEANE_1)
 
     circuit.place_cx(SURFACE_A, A_1A_L)
+    circuit.place_reset_x(A_1A_R)
     # Surface(5); The last cycle of the second round.
     for m in ls_syndrome_measurements:
         assert not m.is_complete()
