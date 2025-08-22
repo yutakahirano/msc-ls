@@ -58,10 +58,16 @@ class SteanePlusSurfaceCode:
         self.primal_circuit = Circuit(mapping, error_probability)
         self.partially_noiseless_circuit = Circuit(mapping, error_probability)
         noiseless_qubits: list[tuple[int, int]] = []
-        for y in range(0, 16):
-            for x in range(0, mapping.width):
-                if (x + y) % 2 == 0:
-                    noiseless_qubits.append((x, y))
+        if full_post_selection:
+            for y in range(0, mapping.height):
+                for x in range(0, mapping.width):
+                    if (x + y) % 2 == 0:
+                        noiseless_qubits.append((x, y))
+        else:
+            for y in range(0, 16):
+                for x in range(0, mapping.width):
+                    if (x + y) % 2 == 0:
+                        noiseless_qubits.append((x, y))
         self.partially_noiseless_circuit.mark_qubits_as_noiseless(noiseless_qubits)
         self.circuit = MultiplexingCircuit(self.primal_circuit, self.partially_noiseless_circuit)
         self.surface_syndrome_measurements: dict[tuple[int, int], SurfaceSyndromeMeasurement] = {}
@@ -422,10 +428,6 @@ class SteanePlusSurfaceCode:
         self.surface_syndrome_measurements[(surface_offset_x + 1, surface_offset_y - 1)].last_measurement = \
             ls_results.x_ab_measurement()
 
-        if not self.full_post_selection:
-            for m in self.surface_syndrome_measurements.values():
-                m.set_post_selection(False)
-
         if False:
             # Upward code expansion:
             # TODO: Consider removing this along with _setup_syndrome_measurements_for_code_expansion_upward() and
@@ -446,6 +448,9 @@ class SteanePlusSurfaceCode:
             assert surface_offset_y + 2 * (surface_distance - 1) < mapping.height
             self._setup_syndrome_measurements_for_code_expansion_downward()
             self._prepare_qubits_for_code_expansion_downward()
+
+        for m in self.surface_syndrome_measurements.values():
+            m.set_post_selection(False)
 
         for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * self.num_epilogue_syndrome_extraction_rounds):
             for m in self.surface_syndrome_measurements.values():
