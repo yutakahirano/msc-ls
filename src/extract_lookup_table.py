@@ -91,6 +91,7 @@ def main() -> None:
         print('Lookup table is not found.', file=sys.stderr)
         return
 
+    print('match_all_nontrivial = {}'.format(lookup_table.match_all_nontrivial))
     print('#entries = {}'.format(len(lookup_table)))
     ls: list[int] = [count for (bytes, count) in lookup_table.table.items()]
     ls.sort(reverse=True)

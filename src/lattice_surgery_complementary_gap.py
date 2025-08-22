@@ -541,7 +541,7 @@ def construct_lookup_table(
         seed: int | None,
         detectors_for_post_selection: list[DetectorIdentifier],
         gap_threshold: float,
-        with_heuristic_gap_calculation) -> LookupTable:
+        with_heuristic_gap_calculation) -> tuple[LookupTable, bool]:
     # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
     # non-matchable detectors. We perform post-selection for all detectors in the Steane code, so the difference
     # between the two DEMs should be small...
@@ -557,6 +557,7 @@ def construct_lookup_table(
 
     table = LookupTable(gap_threshold=gap_threshold)
 
+    all_nontrivial_syndromes_have_gap_below_threshold = True
     for shot in range(num_shots):
         syndrome = detection_events[shot]
         if np.any(syndrome[postselection_ids] != 0):
@@ -585,14 +586,17 @@ def construct_lookup_table(
         expected = np.array_equal(actual, prediction)
         gap = max_weight - min_weight
 
-        if with_heuristic_gap_calculation and all(syndrome[:num_detectors_for_lookup_table] == 0):
+        syndrome_for_table_is_trivial: bool = all(syndrome[:num_detectors_for_lookup_table] == 0)
+        if with_heuristic_gap_calculation and syndrome_for_table_is_trivial:
             gap += 0.01
 
         gap *= 100
 
         table.add(syndrome[:num_detectors_for_lookup_table], gap, expected)
+        if not syndrome_for_table_is_trivial and gap >= gap_threshold:
+            all_nontrivial_syndromes_have_gap_below_threshold = False
 
-    return table
+    return (table, all_nontrivial_syndromes_have_gap_below_threshold)
 
 
 def parallel_construct_lookup_table(
@@ -605,7 +609,7 @@ def parallel_construct_lookup_table(
         with_heuristic_gap_calculation: bool,
         parallelism: int,
         num_shots_per_task: int,
-        show_progress: bool) -> LookupTable:
+        show_progress: bool) -> tuple[LookupTable, bool]:
     if num_shots / parallelism < 1000 or parallelism == 1:
         return construct_lookup_table(
             primal_circuit.circuit,
@@ -620,6 +624,9 @@ def parallel_construct_lookup_table(
 
     table = LookupTable(gap_threshold=gap_threshold)
     progress = 0
+
+    all_nontrivial_syndromes_have_gap_below_threshold = True
+
     with ProcessPoolExecutor(max_workers=parallelism) as executor:
         futures: list[concurrent.futures.Future] = []
         remaining_shots = num_shots
@@ -652,7 +659,11 @@ def parallel_construct_lookup_table(
                 new_futures = []
                 for future in futures:
                     if future.done():
-                        table.extend(future.result())
+                        table_per_task, all_nontrivial_syndromes_have_gap_below_threshold_per_task = future.result()
+                        table.extend(table_per_task)
+                        all_nontrivial_syndromes_have_gap_below_threshold = \
+                            all_nontrivial_syndromes_have_gap_below_threshold and \
+                            all_nontrivial_syndromes_have_gap_below_threshold_per_task
                         progress += num_shots_for_future[future]
                         del num_shots_for_future[future]
                     else:
@@ -663,7 +674,7 @@ def parallel_construct_lookup_table(
         finally:
             for future in futures:
                 future.cancel()
-    return table
+    return (table, all_nontrivial_syndromes_have_gap_below_threshold)
 
 
 class SimulationResultsForDiscardRates:
@@ -1093,7 +1104,7 @@ def main() -> None:
         if construct_lookup_table:
             assert gap_threshold is not None
             print('Constructing the lookup table...')
-            table = parallel_construct_lookup_table(
+            (table, all_nontrivial_syndromes_have_gap_below_threshold) = parallel_construct_lookup_table(
                 primal_circuit,
                 partially_noiseless_circuit,
                 num_shots,
@@ -1105,6 +1116,9 @@ def main() -> None:
                 max_shots_per_task,
                 show_progress
             )
+            if all_nontrivial_syndromes_have_gap_below_threshold:
+                print('All non-trivial syndromes have gap below threshold.')
+                table.set_reject_nontrivial()
             print('len(table) = {}, num_samples = {}'.format(len(table), table.num_samples()))
             lookup_table_to_store = table.negative_samples_only(lookup_table_min_samples)
             print('Storing the lookup table of size {}...'.format(len(lookup_table_to_store)))

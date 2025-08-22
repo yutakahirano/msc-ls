@@ -148,6 +148,7 @@ class LookupTable:
         self.table: dict[bytes, tuple[int, int]] = {}
         self.gap_threshold = gap_threshold
         self._num_samples: int = 0
+        self._reject_nontrivial: bool = False
 
     def add(self, syndrome: np.ndarray, gap: float, expected: bool) -> None:
         bytes = syndrome.tobytes()
@@ -172,11 +173,17 @@ class LookupTable:
         self._num_samples += other._num_samples
 
     def negative_samples_only(self, min_samples) -> LookupTableWithNegativeSamplesOnly:
+        if self._reject_nontrivial:
+            return LookupTableWithNegativeSamplesOnly(match_all_nontrivial=True)
+
         lookup_table = LookupTableWithNegativeSamplesOnly()
         lookup_table.table = {
             bytes: count for (bytes, (a, count)) in self.table.items() if a == 0 and count >= min_samples
         }
         return lookup_table
+
+    def set_reject_nontrivial(self) -> None:
+        self._reject_nontrivial = True
 
     def __len__(self) -> int:
         return len(self.table)
@@ -186,8 +193,9 @@ class LookupTable:
 
 
 class LookupTableWithNegativeSamplesOnly:
-    def __init__(self) -> None:
+    def __init__(self, match_all_nontrivial: bool = False) -> None:
         self.table: dict[bytes, int] = {}
+        self.match_all_nontrivial = match_all_nontrivial
 
     def __len__(self) -> int:
         return len(self.table)
@@ -195,4 +203,6 @@ class LookupTableWithNegativeSamplesOnly:
     def __contains__(self, key: object) -> bool:
         if not isinstance(key, bytes):
             return NotImplemented
+        if self.match_all_nontrivial:
+            return any(key)
         return key in self.table
