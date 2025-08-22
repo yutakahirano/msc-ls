@@ -41,7 +41,7 @@ class SteanePlusSurfaceCode:
     def __init__(self, mapping: QubitMapping, surface_intermediate_distance: int, surface_final_distance: int,
                  initial_value: InitialValue, steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern,
                  perfect_initialization: bool,
-                 error_probability: float, with_heulistic_post_selection: bool,
+                 error_probability: float, with_heuristic_post_selection: bool,
                  full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int,
                  skip_detector_for_complementary_gap: bool) -> None:
         self.mapping = mapping
@@ -52,7 +52,7 @@ class SteanePlusSurfaceCode:
         self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
         self.perfect_initialization = perfect_initialization
         self.error_probability = error_probability
-        self.with_heulistic_post_selection = with_heulistic_post_selection
+        self.with_heuristic_post_selection = with_heuristic_post_selection
         self.full_post_selection = full_post_selection
         self.num_epilogue_syndrome_extraction_rounds = num_epilogue_syndrome_extraction_rounds
         self.primal_circuit = Circuit(mapping, error_probability)
@@ -114,11 +114,11 @@ class SteanePlusSurfaceCode:
                 if i < surface_distance - 1 and j < surface_distance - 1:
                     if (i + j) % 2 == 0:
                         m = SurfaceZSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, False)
-                        if self.with_heulistic_post_selection and i < 4 and j < 5:
+                        if self.with_heuristic_post_selection and i < 4 and j < 5:
                             m.set_post_selection(True)
                     else:
                         m = SurfaceXSyndromeMeasurement(self.circuit, (x + 1, y + 1), FOUR_WEIGHT, True)
-                        if self.with_heulistic_post_selection and i < 4 and j < 5:
+                        if self.with_heuristic_post_selection and i < 4 and j < 5:
                             m.set_post_selection(True)
                     self.surface_syndrome_measurements[(x + 1, y + 1)] = m
 
@@ -540,7 +540,8 @@ def construct_lookup_table(
         num_detectors_for_lookup_table: int,
         seed: int | None,
         detectors_for_post_selection: list[DetectorIdentifier],
-        gap_threshold: float) -> LookupTable:
+        gap_threshold: float,
+        with_heuristic_gap_calculation) -> LookupTable:
     # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
     # non-matchable detectors. We perform post-selection for all detectors in the Steane code, so the difference
     # between the two DEMs should be small...
@@ -553,9 +554,6 @@ def construct_lookup_table(
 
     results = SimulationResultsForDiscardRates()
     postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
-
-    mask = np.ones_like(detection_events[0], dtype=bool)
-    mask[detector_for_complementary_gap.id] = False
 
     table = LookupTable(gap_threshold=gap_threshold)
 
@@ -587,10 +585,8 @@ def construct_lookup_table(
         expected = np.array_equal(actual, prediction)
         gap = max_weight - min_weight
 
-        # Because we *know* that the trivial syndrome is least likely to have logical errors,
-        # we increase the gap manually.
-        if all(syndrome[mask] == 0):
-            gap += 10.0
+        if with_heuristic_gap_calculation and all(syndrome[:num_detectors_for_lookup_table] == 0):
+            gap += 0.01
 
         gap *= 100
 
@@ -606,6 +602,7 @@ def parallel_construct_lookup_table(
         detector_for_complementary_gap: DetectorIdentifier,
         num_detectors_for_lookup_table: int,
         gap_threshold: float,
+        with_heuristic_gap_calculation: bool,
         parallelism: int,
         num_shots_per_task: int,
         show_progress: bool) -> LookupTable:
@@ -618,7 +615,8 @@ def parallel_construct_lookup_table(
             num_detectors_for_lookup_table,
             None,  # seed
             primal_circuit.detectors_for_post_selection,
-            gap_threshold)
+            gap_threshold,
+            with_heuristic_gap_calculation)
 
     table = LookupTable(gap_threshold=gap_threshold)
     progress = 0
@@ -640,7 +638,8 @@ def parallel_construct_lookup_table(
                                      num_detectors_for_lookup_table,
                                      seed,
                                      primal_circuit.detectors_for_post_selection,
-                                     gap_threshold)
+                                     gap_threshold,
+                                     with_heuristic_gap_calculation)
             futures.append(future)
             num_shots_for_future[future] = num_shots_for_this_task
         try:
@@ -774,6 +773,7 @@ def perform_simulation(
         partially_noiseless_stim_circuit: stim.Circuit,
         num_shots: int,
         gap_threshold: float | None,
+        with_heuristic_gap_calculation: bool,
         lookup_table: LookupTableWithNegativeSamplesOnly | None,
         num_detectors_for_lookup_table: int,
         detector_for_complementary_gap: DetectorIdentifier,
@@ -795,9 +795,6 @@ def perform_simulation(
     else:
         results = SimulationResultsForGapThreshold(gap_threshold)
     postselection_ids = np.array([id.id for id in detectors_for_post_selection], dtype='uint')
-
-    mask = np.ones_like(detection_events[0], dtype=bool)
-    mask[detector_for_complementary_gap.id] = False
 
     for shot in range(num_shots):
         syndrome = detection_events[shot]
@@ -827,10 +824,8 @@ def perform_simulation(
         expected = np.array_equal(actual, prediction)
         gap = max_weight - min_weight
 
-        # Because we *know* that the trivial syndrome is least likely to have logical errors,
-        # we increase the gap manually.
-        if all(syndrome[mask] == 0):
-            gap += 10.0
+        if with_heuristic_gap_calculation and all(syndrome[:num_detectors_for_lookup_table] == 0):
+            gap += 0.01
 
         gap *= 100
 
@@ -854,6 +849,7 @@ def perform_parallel_simulation(
         detector_for_complementary_gap: DetectorIdentifier,
         num_shots: int,
         gap_threshold: float | None,
+        with_heuristic_gap_calculation: bool,
         lookup_table: LookupTableWithNegativeSamplesOnly | None,
         num_detectors_for_lookup_table: int,
         parallelism: int,
@@ -865,6 +861,7 @@ def perform_parallel_simulation(
                 partially_noiseless_circuit.circuit,
                 num_shots,
                 gap_threshold,
+                with_heuristic_gap_calculation,
                 lookup_table,
                 num_detectors_for_lookup_table,
                 detector_for_complementary_gap,
@@ -891,6 +888,7 @@ def perform_parallel_simulation(
                                      partially_noiseless_circuit.circuit,
                                      num_shots_for_this_task,
                                      gap_threshold,
+                                     with_heuristic_gap_calculation,
                                      lookup_table,
                                      num_detectors_for_lookup_table,
                                      detector_for_complementary_gap,
@@ -940,7 +938,8 @@ def main() -> None:
     parser.add_argument('--steane-syndrome-extraction-pattern', choices=['XZZ', 'ZXZ', 'ZZ'], default='ZXZ',)
     parser.add_argument('--perfect-initialization', action='store_true')
     parser.add_argument('--imperfect-initialization', action='store_true')
-    parser.add_argument('--with-heulistic-post-selection', action='store_true')
+    parser.add_argument('--with-heuristic-post-selection', action='store_true')
+    parser.add_argument('--with-heuristic-gap-calculation', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--num-epilogue-syndrome-extraction-rounds', type=int, default=10)
     parser.add_argument('--discard-rates', type=str)
@@ -979,7 +978,8 @@ def main() -> None:
     print('  initial-value = {}'.format(args.initial_value))
     print('  steane-syndrome-extraction-pattern = {}'.format(args.steane_syndrome_extraction_pattern))
     print('  perfect-initialization = {}'.format(perfect_initialization))
-    print('  with-heulistic-post-selection = {}'.format(args.with_heulistic_post_selection))
+    print('  with-heuristic-post-selection = {}'.format(args.with_heuristic_post_selection))
+    print('  with-heuristic-gap-calculation = {}'.format(args.with_heuristic_gap_calculation))
     print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  num-epilogue-syndrome-extraction-rounds = {}'.format(args.num_epilogue_syndrome_extraction_rounds))
     print('  discard-rates = {}'.format(args.discard_rates))
@@ -1030,7 +1030,8 @@ def main() -> None:
         gap_threshold = args.gap_threshold
         discard_rates = []
 
-    with_heulistic_post_selection: bool = args.with_heulistic_post_selection
+    with_heuristic_post_selection: bool = args.with_heuristic_post_selection
+    with_heuristic_gap_calculation: bool = args.with_heuristic_gap_calculation
     full_post_selection: bool = args.full_post_selection
     num_epilogue_syndrome_extraction_rounds: int = args.num_epilogue_syndrome_extraction_rounds
     print_circuit: bool = args.print_circuit
@@ -1051,7 +1052,7 @@ def main() -> None:
     r = SteanePlusSurfaceCode(
         mapping, surface_intermediate_distance, surface_final_distance, initial_value,
         steane_syndrome_extraction_pattern,
-        perfect_initialization, error_probability, with_heulistic_post_selection, full_post_selection,
+        perfect_initialization, error_probability, with_heuristic_post_selection, full_post_selection,
         num_epilogue_syndrome_extraction_rounds, skip_detector_for_complementary_gap)
     primal_circuit = r.primal_circuit
     partially_noiseless_circuit = r.partially_noiseless_circuit
@@ -1079,7 +1080,8 @@ def main() -> None:
         initial_value=initial_value.name,
         steane_syndrome_extraction_pattern=steane_syndrome_extraction_pattern.name,
         perfect_initialization=perfect_initialization,
-        with_heulistic_post_selection=with_heulistic_post_selection,
+        with_heuristic_post_selection=with_heuristic_post_selection,
+        with_heuristic_gap_calculation=with_heuristic_gap_calculation,
         full_post_selection=full_post_selection,
         num_epilogue_syndrome_extraction_rounds=num_epilogue_syndrome_extraction_rounds,
         gap_threshold=gap_threshold or 0)
@@ -1098,6 +1100,7 @@ def main() -> None:
                 detector_for_complementary_gap,
                 r.num_detectors_for_lookup_table,
                 gap_threshold,
+                with_heuristic_gap_calculation,
                 parallelism,
                 max_shots_per_task,
                 show_progress
@@ -1121,6 +1124,7 @@ def main() -> None:
         detector_for_complementary_gap,
         num_shots,
         gap_threshold,
+        with_heuristic_gap_calculation,
         lookup_table,
         r.num_detectors_for_lookup_table,
         parallelism,

@@ -15,7 +15,8 @@ def main() -> None:
     parser.add_argument('--steane-syndrome-extraction-pattern', choices=['XZZ', 'ZXZ', 'ZZ'], default='ZXZ',)
     parser.add_argument('--perfect-initialization', action='store_true')
     parser.add_argument('--imperfect-initialization', action='store_true')
-    parser.add_argument('--with-heulistic-post-selection', action='store_true')
+    parser.add_argument('--with-heuristic-post-selection', action='store_true')
+    parser.add_argument('--with-heuristic-gap-calculation', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
     parser.add_argument('--num-epilogue-syndrome-extraction-rounds', type=int, default=10)
     parser.add_argument('--gap-threshold', type=float)
@@ -39,7 +40,8 @@ def main() -> None:
     print('  initial-value = {}'.format(args.initial_value))
     print('  steane-syndrome-extraction-pattern = {}'.format(args.steane_syndrome_extraction_pattern))
     print('  perfect-initialization = {}'.format(perfect_initialization))
-    print('  with-heulistic-post-selection = {}'.format(args.with_heulistic_post_selection))
+    print('  with-heuristic-post-selection = {}'.format(args.with_heuristic_post_selection))
+    print('  with-heuristic-gap-calculation = {}'.format(args.with_heuristic_gap_calculation))
     print('  full-post-selection = {}'.format(args.full_post_selection))
     print('  num-epilogue-syndrome-extraction-rounds = {}'.format(args.num_epilogue_syndrome_extraction_rounds))
     print('  gap-threshold = {}'.format(args.gap_threshold))
@@ -61,7 +63,8 @@ def main() -> None:
     steane_syndrome_extraction_pattern: str = args.steane_syndrome_extraction_pattern
     gap_threshold: float = args.gap_threshold
 
-    with_heulistic_post_selection: bool = args.with_heulistic_post_selection
+    with_heuristic_post_selection: bool = args.with_heuristic_post_selection
+    with_heuristic_gap_calculation: bool = args.with_heuristic_gap_calculation
     full_post_selection: bool = args.full_post_selection
     num_epilogue_syndrome_extraction_rounds: int = args.num_epilogue_syndrome_extraction_rounds
     interval = args.interval
@@ -73,7 +76,8 @@ def main() -> None:
         initial_value=initial_value,
         steane_syndrome_extraction_pattern=steane_syndrome_extraction_pattern,
         perfect_initialization=perfect_initialization,
-        with_heulistic_post_selection=with_heulistic_post_selection,
+        with_heuristic_post_selection=with_heuristic_post_selection,
+        with_heuristic_gap_calculation=with_heuristic_gap_calculation,
         full_post_selection=full_post_selection,
         num_epilogue_syndrome_extraction_rounds=num_epilogue_syndrome_extraction_rounds,
         gap_threshold=gap_threshold)
