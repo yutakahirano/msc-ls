@@ -129,7 +129,7 @@ class SteanePlusSurfaceCode:
             case SteaneSyndromeExtractionPattern.XZZ:
                 g = steane_code.lattice_surgery_generator_xzz(circuit, surface_distance, ls_results)
             case SteaneSyndromeExtractionPattern.ZXZ:
-                g = steane_code.lattice_surgery_generator_zxz(circuit, surface_distance, ls_results)
+                g = steane_code.lattice_surgery_generator_zxz(circuit, surface_distance, True, ls_results)
             case SteaneSyndromeExtractionPattern.ZZ:
                 g = steane_code.lattice_surgery_generator_zz(circuit, surface_distance, ls_results)
 

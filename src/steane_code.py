@@ -1322,6 +1322,7 @@ def lattice_surgery_generator_xzz(
 def lattice_surgery_generator_zxz(
         circuit: Circuit | MultiplexingCircuit,
         surface_distance: int,
+        enable_mba5_measurement: bool,
         results: LatticeSurgeryMeasurements) -> Generator[None, None, None]:
     # Note that we don't perform the X0145 syndrome measurement here, because it anticommutes with Z1A and Z35BC
     # stabilizers.
@@ -1683,10 +1684,11 @@ def lattice_surgery_generator_zxz(
         [m_steane_0, m_steane_2, m_steane_2_, m_steane_3, m_steane_5], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_detector(
         [m_steane_0, m_steane_2, m_steane_2_, m_steane_4, m_steane_6], post_selection=True, tag=POST_SELECTION_TAG)
-    ### !!!
-    ### Adding this detector regresses the logical error rate.
-    circuit.place_detector(
-        [m_steane_0, m_steane_1, m_steane_4, m_ba5], post_selection=True, tag=POST_SELECTION_TAG)
+    if enable_mba5_measurement:
+        # !!!
+        # Adding this detector regresses the logical error rate, because the matching decoder gets confused.
+        circuit.place_detector(
+            [m_steane_0, m_steane_1, m_steane_4, m_ba5], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_detector(
         [m_steane_0, m_steane_1, m_steane_4, m_steane_5, m_ab], post_selection=True, tag=POST_SELECTION_TAG)
 
