@@ -119,9 +119,10 @@ def store_lookup_table(
     lookup_table_blob = pickle.dumps(lookup_table)
 
     cur.execute(
-        'INSERT INTO lookup_tables (error_probability, surface_intermediate_distance, surface_final_distance, '
-        'initial_value, steane_syndrome_extraction_pattern, perfect_initialization, with_heuristic_post_selection,'
-        'with_heuristic_gap_calculation, full_post_selection, num_epilogue_syndrome_extraction_rounds, gap_threshold,'
+        'INSERT OR REPLACE INTO lookup_tables (error_probability, surface_intermediate_distance,'
+        'surface_final_distance, initial_value, steane_syndrome_extraction_pattern, perfect_initialization,'
+        'with_heuristic_post_selection, with_heuristic_gap_calculation, full_post_selection,'
+        'num_epilogue_syndrome_extraction_rounds, gap_threshold,'
         'lookup_table_blob) VALUES '
         '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
