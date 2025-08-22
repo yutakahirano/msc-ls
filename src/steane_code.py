@@ -863,6 +863,7 @@ def check_generator(circuit: Circuit | MultiplexingCircuit) -> Generator[None, N
 
     m = circuit.place_measurement_x((3, 13))
     circuit.place_detector([m], post_selection=True, tag=POST_SELECTION_TAG)
+    circuit.place_layering_tick('Check T')
     yield
 
     circuit.place_reset_x((3, 13))
@@ -1130,6 +1131,7 @@ def lattice_surgery_generator_xzz(
         assert m.is_complete()
     yield
 
+    circuit.place_layering_tick('Stabilize')
     # Measurements:
     # For 0145
     circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
@@ -1248,6 +1250,7 @@ def lattice_surgery_generator_xzz(
     # Now we have second syndrome measurements.
     yield
 
+    circuit.place_layering_tick('Stabilize')
     # Disentangling ancillae.
     circuit.place_cx(A_0145_4, A_0145_015)
     circuit.place_cx(A_0235_035, A_0235_2)
@@ -1462,6 +1465,7 @@ def lattice_surgery_generator_zxz(
         assert m.is_complete()
     yield
 
+    circuit.place_layering_tick('Stabilize')
     # Measuring ancillae for Z0145:
     circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
     circuit.place_detector([circuit.place_measurement_z(A_0145_015)], post_selection=True, tag=POST_SELECTION_TAG)
@@ -1579,6 +1583,7 @@ def lattice_surgery_generator_zxz(
         assert m.is_complete()
     # Now we have the second lattice surgery syndrome measurements.
     yield
+    circuit.place_layering_tick('Stabilize')
 
     # Disentangling ancillae for Z0145:
     circuit.place_cx(A_0145_4, A_0145_015)
@@ -1818,6 +1823,7 @@ def lattice_surgery_generator_zz(
         assert m.is_complete()
     yield
 
+    circuit.place_layering_tick('Stabilize')
     # Measurements:
     # For 0145
     circuit.place_detector([circuit.place_measurement_x(A_0145_4)], post_selection=True, tag=POST_SELECTION_TAG)
@@ -1935,6 +1941,7 @@ def lattice_surgery_generator_zz(
     # Now we have second syndrome measurements.
     yield
 
+    circuit.place_layering_tick('Stabilize')
     # Disentangling ancillae.
     circuit.place_cx(A_0145_4, A_0145_015)
     circuit.place_cx(A_0235_035, A_0235_2)

@@ -109,6 +109,10 @@ class Circuit:
         self.tainted_qubits.clear()
         self.circuit.append('TICK')
 
+    def place_layering_tick(self, tag: str) -> None:
+        '''Places a TICK virtual gate for layering. This does not add idling noise.'''
+        self.circuit.append('TICK', tag=tag)
+
     def is_tainted_by_id(self, id: int) -> bool:
         '''\
         Returns True if the qubit with the given ID has been involved in a gate
@@ -273,6 +277,10 @@ class MultiplexingCircuit:
     def place_tick(self) -> None:
         self.circuit1.place_tick()
         self.circuit2.place_tick()
+
+    def place_layering_tick(self, tag: str) -> None:
+        self.circuit1.place_layering_tick(tag)
+        self.circuit2.place_layering_tick(tag)
 
     def place_single_qubit_gate(self, gate: str, target_position: tuple[int, int]) -> None:
         self.circuit1.place_single_qubit_gate(gate, target_position)

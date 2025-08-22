@@ -364,12 +364,16 @@ class SteanePlusSurfaceCode:
         else:
             steane_code.perform_injection(circuit)
             circuit.place_tick()
+            circuit.place_layering_tick('Encode T')
 
             steane_code.perform_zx_syndrome_extraction_after_injection(circuit)
             circuit.place_tick()
+            circuit.place_layering_tick('Stabilizie')
 
+            # We have one `place_layering_tick()` call in `perform_check()`.
             steane_code.perform_check(circuit)
             circuit.place_tick()
+            circuit.place_layering_tick('Check T')
 
         ls_results = steane_code.LatticeSurgeryMeasurements()
         match self.steane_syndrome_extraction_pattern:
@@ -412,6 +416,8 @@ class SteanePlusSurfaceCode:
             circuit.place_tick()
             tick += 1
 
+        circuit.place_layering_tick('Stabilize')
+
         # The qubits on the Steane code are now noisy for `self.partially_noiseless_circuit`.
         self.partially_noiseless_circuit.mark_qubits_as_noiseless([])
         self.num_detectors_for_lookup_table = self.partially_noiseless_circuit.circuit.num_detectors
@@ -452,10 +458,19 @@ class SteanePlusSurfaceCode:
         for m in self.surface_syndrome_measurements.values():
             m.set_post_selection(False)
 
-        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH * self.num_epilogue_syndrome_extraction_rounds):
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
             for m in self.surface_syndrome_measurements.values():
                 m.run()
             circuit.place_tick()
+        circuit.place_layering_tick('Escape!')
+
+        for i in range(self.num_epilogue_syndrome_extraction_rounds):
+            for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+                for m in self.surface_syndrome_measurements.values():
+                    m.run()
+                circuit.place_tick()
+            if i < self.num_epilogue_syndrome_extraction_rounds - 1:
+                circuit.place_layering_tick('[wait for gap]')
 
         # Perfect verification of the resultant state.
         with SuppressNoise(circuit):
@@ -485,6 +500,7 @@ class SteanePlusSurfaceCode:
                     if not self.skip_detector_for_complementary_gap:
                         self.detector_for_complementary_gap = circuit.place_detector(ms)
                     circuit.place_observable_include(ms)
+            circuit.place_layering_tick('ready')
 
     def _logical_x_pauli_string(self) -> stim.PauliString:
         surface_distance = self.surface_distance
