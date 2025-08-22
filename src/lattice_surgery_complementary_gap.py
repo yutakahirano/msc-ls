@@ -1090,10 +1090,6 @@ def main() -> None:
 
         if construct_lookup_table:
             assert gap_threshold is not None
-            if query_lookup_table(lookup_table_con, lookup_table_key) is not None:
-                print('Lookup table already exists. Skipping construction.')
-                return
-
             print('Constructing the lookup table...')
             table = parallel_construct_lookup_table(
                 primal_circuit,
