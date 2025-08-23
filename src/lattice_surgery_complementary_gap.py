@@ -7,6 +7,7 @@ import enum
 import math
 import numpy as np
 import pymatching
+import random
 import re
 import sqlite3
 import stim
@@ -605,6 +606,7 @@ def parallel_construct_lookup_table(
         num_shots: int,
         detector_for_complementary_gap: DetectorIdentifier,
         num_detectors_for_lookup_table: int,
+        seed: int,
         gap_threshold: float,
         with_heuristic_gap_calculation: bool,
         parallelism: int,
@@ -617,7 +619,7 @@ def parallel_construct_lookup_table(
             num_shots,
             detector_for_complementary_gap,
             num_detectors_for_lookup_table,
-            None,  # seed
+            seed,
             primal_circuit.detectors_for_post_selection,
             gap_threshold,
             with_heuristic_gap_calculation)
@@ -634,7 +636,7 @@ def parallel_construct_lookup_table(
         num_shots_per_task = min(num_shots_per_task, (num_shots + parallelism - 1) // parallelism)
         num_shots_for_future: dict[concurrent.futures.Future, int] = {}
         while remaining_shots > 0:
-            seed = None
+            seed_to_pass = (seed + remaining_shots) % (2 ** 64)
             num_shots_for_this_task = min(num_shots_per_task, remaining_shots)
             remaining_shots -= num_shots_for_this_task
             future = executor.submit(construct_lookup_table,
@@ -643,7 +645,7 @@ def parallel_construct_lookup_table(
                                      num_shots_for_this_task,
                                      detector_for_complementary_gap,
                                      num_detectors_for_lookup_table,
-                                     seed,
+                                     seed_to_pass,
                                      primal_circuit.detectors_for_post_selection,
                                      gap_threshold,
                                      with_heuristic_gap_calculation)
@@ -863,6 +865,7 @@ def perform_parallel_simulation(
         with_heuristic_gap_calculation: bool,
         lookup_table: LookupTableWithNegativeSamplesOnly | None,
         num_detectors_for_lookup_table: int,
+        seed: int,
         parallelism: int,
         num_shots_per_task: int,
         show_progress: bool) -> SimulationResults:
@@ -876,7 +879,7 @@ def perform_parallel_simulation(
                 lookup_table,
                 num_detectors_for_lookup_table,
                 detector_for_complementary_gap,
-                None,
+                seed,
                 primal_circuit.detectors_for_post_selection)
 
     results: SimulationResults
@@ -891,7 +894,7 @@ def perform_parallel_simulation(
 
         num_shots_per_task = min(num_shots_per_task, (num_shots + parallelism - 1) // parallelism)
         while remaining_shots > 0:
-            seed = None
+            seed_to_pass = (seed + remaining_shots) % (2 ** 64)
             num_shots_for_this_task = min(num_shots_per_task, remaining_shots)
             remaining_shots -= num_shots_for_this_task
             future = executor.submit(perform_simulation,
@@ -903,7 +906,7 @@ def perform_parallel_simulation(
                                      lookup_table,
                                      num_detectors_for_lookup_table,
                                      detector_for_complementary_gap,
-                                     seed,
+                                     seed_to_pass,
                                      primal_circuit.detectors_for_post_selection)
             futures.append(future)
         try:
@@ -959,6 +962,7 @@ def main() -> None:
     parser.add_argument('--construct-lookup-table', action='store_true')
     parser.add_argument('--lookup-table-min-samples', type=int, default=100)
     parser.add_argument('--skip-detector-for-complementary-gap', action='store_true')
+    parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--show-progress', action='store_true')
 
     args = parser.parse_args()
@@ -980,6 +984,12 @@ def main() -> None:
         print('Error: Cannot specify both --discard-rates and --gap-threshold.', file=sys.stderr)
         return
 
+    seed: int
+    if args.seed is None:
+        seed = random.randrange(0, 2 ** 32)
+    else:
+        seed = args.seed
+
     print('  num-shots = {}'.format(args.num_shots))
     print('  error-probability = {}'.format(args.error_probability))
     print('  parallelism = {}'.format(args.parallelism))
@@ -999,6 +1009,10 @@ def main() -> None:
     print('  construct-lookup-table = {}'.format(args.construct_lookup_table))
     print('  lookup-table-min-samples = {}'.format(args.lookup_table_min_samples))
     print('  skip-detector-for-complementary-gap = {}'.format(args.skip_detector_for_complementary_gap))
+    if args.seed is None:
+        print('  seed = None ({})'.format(seed))
+    else:
+        print('  seed = {}'.format(seed))
     print('  show-progress = {}'.format(args.show_progress))
 
     num_shots: int = args.num_shots
@@ -1110,6 +1124,7 @@ def main() -> None:
                 num_shots,
                 detector_for_complementary_gap,
                 r.num_detectors_for_lookup_table,
+                seed,
                 gap_threshold,
                 with_heuristic_gap_calculation,
                 parallelism,
@@ -1141,6 +1156,7 @@ def main() -> None:
         with_heuristic_gap_calculation,
         lookup_table,
         r.num_detectors_for_lookup_table,
+        seed,
         parallelism,
         max_shots_per_task,
         show_progress)
