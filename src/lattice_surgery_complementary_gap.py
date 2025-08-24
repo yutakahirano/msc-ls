@@ -782,16 +782,19 @@ SimulationResults = SimulationResultsForDiscardRates | SimulationResultsForGapTh
 
 
 def perform_simulation(
-        primal_stim_circuit: stim.Circuit,
-        partially_noiseless_stim_circuit: stim.Circuit,
+        primal_circuit: Circuit,
+        partially_noiseless_circuit: Circuit,
         num_shots: int,
         gap_threshold: float | None,
         with_heuristic_gap_calculation: bool,
         lookup_table: LookupTableWithNegativeSamplesOnly | None,
         num_detectors_for_lookup_table: int,
         detector_for_complementary_gap: DetectorIdentifier,
-        seed: int | None,
-        detectors_for_post_selection: list[DetectorIdentifier]) -> SimulationResults:
+        seed: int | None) -> SimulationResults:
+    primal_stim_circuit: stim.Circuit = primal_circuit.circuit
+    partially_noiseless_stim_circuit: stim.Circuit = partially_noiseless_circuit.circuit
+    detectors_for_post_selection: list[DetectorIdentifier] = primal_circuit.detectors_for_post_selection
+
     # We construct a decoder for `partially_noiseless_stim_circuit`, not to confuse the matching decoder with
     # non-matchable detectors. We perform post-selection for all detectors in the Steane code, so the difference
     # between the two DEMs should be small...
@@ -871,16 +874,15 @@ def perform_parallel_simulation(
         show_progress: bool) -> SimulationResults:
     if num_shots / parallelism < 1000 or parallelism == 1:
         return perform_simulation(
-                primal_circuit.circuit,
-                partially_noiseless_circuit.circuit,
+                primal_circuit,
+                partially_noiseless_circuit,
                 num_shots,
                 gap_threshold,
                 with_heuristic_gap_calculation,
                 lookup_table,
                 num_detectors_for_lookup_table,
                 detector_for_complementary_gap,
-                seed,
-                primal_circuit.detectors_for_post_selection)
+                seed)
 
     results: SimulationResults
     if gap_threshold is None:
@@ -898,16 +900,15 @@ def perform_parallel_simulation(
             num_shots_for_this_task = min(num_shots_per_task, remaining_shots)
             remaining_shots -= num_shots_for_this_task
             future = executor.submit(perform_simulation,
-                                     primal_circuit.circuit,
-                                     partially_noiseless_circuit.circuit,
+                                     primal_circuit,
+                                     partially_noiseless_circuit,
                                      num_shots_for_this_task,
                                      gap_threshold,
                                      with_heuristic_gap_calculation,
                                      lookup_table,
                                      num_detectors_for_lookup_table,
                                      detector_for_complementary_gap,
-                                     seed_to_pass,
-                                     primal_circuit.detectors_for_post_selection)
+                                     seed_to_pass)
             futures.append(future)
         try:
             while len(futures) > 0:
