@@ -16,6 +16,7 @@ import sys
 import steane_code
 
 from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from enum import auto
 from util import QubitMapping, Circuit, MultiplexingCircuit
 from util import MeasurementIdentifier, DetectorIdentifier, ObservableIdentifier, SuppressNoise
@@ -369,7 +370,7 @@ class SteanePlusSurfaceCode:
 
             steane_code.perform_zx_syndrome_extraction_after_injection(circuit)
             circuit.place_tick()
-            circuit.place_layering_tick('Stabilizie')
+            circuit.place_layering_tick('Stabilize')
 
             # We have one `place_layering_tick()` call in `perform_check()`.
             steane_code.perform_check(circuit)
@@ -417,7 +418,7 @@ class SteanePlusSurfaceCode:
             circuit.place_tick()
             tick += 1
 
-        circuit.place_layering_tick('Stabilize')
+        circuit.place_layering_tick('Stabilize_2')
 
         # The qubits on the Steane code are now noisy for `self.partially_noiseless_circuit`.
         self.partially_noiseless_circuit.mark_qubits_as_noiseless([])
@@ -679,6 +680,86 @@ def parallel_construct_lookup_table(
     return (table, all_nontrivial_syndromes_have_gap_below_threshold)
 
 
+@dataclass(unsafe_hash=True, frozen=True)
+class SyndromeExtractionRound:
+    label: str
+    index: int
+
+
+class SyndromeExtractionRounds:
+    def __init__(self, circuit: Circuit, qubits_refreshing_label: str) -> None:
+        self._rounds: list[SyndromeExtractionRound] = []
+        self._num_qubits_used_for: dict[SyndromeExtractionRound, int] = {}
+        self._aborting_rounds_for: list[SyndromeExtractionRound] = []
+        qubits_in_use: set[int] = set()
+        num_detectors_in_this_round = 0
+
+        annotation_gates = {
+            'DETECTOR',
+            'MPAD',
+            'OBSERVABLE_INCLUDE',
+            'QUBIT_COORDS',
+            'SHIFT_COORDS',
+            'TICK'
+        }
+        error_gates = {
+            'CORRELATED_ERROR',
+            'DEPOLARIZE1',
+            'DEPOLARIZE2',
+            'E',
+            'ELSE_CORRELATED_ERROR',
+            'HERALDED_ERASE',
+            'HERALDED_PAULI_CHANNEL_1',
+            'II_ERROR',
+            'I_ERROR',
+            'PAULI_CHANNEL_1',
+            'PAULI_CHANNEL_2',
+            'X_ERROR',
+            'Y_ERROR',
+            'Z_ERROR'
+        }
+
+        for inst in circuit.circuit:
+            # We don't support CircuitRepeatBlock.
+            assert isinstance(inst, stim.CircuitInstruction)
+            if inst.name == 'TICK' and inst.tag != '':
+                r = SyndromeExtractionRound(inst.tag, len(self._rounds))
+                self._rounds.append(r)
+                self._num_qubits_used_for[r] = len(qubits_in_use)
+                if inst.tag == qubits_refreshing_label:
+                    qubits_in_use = set()
+                for _ in range(num_detectors_in_this_round):
+                    self._aborting_rounds_for.append(r)
+                num_detectors_in_this_round = 0
+            if inst.name == 'DETECTOR':
+                num_detectors_in_this_round += 1
+            if inst.name not in annotation_gates and inst.name not in error_gates:
+                for target in inst.targets_copy():
+                    if target.is_combiner:
+                        continue
+                    if target.is_qubit_target:
+                        qubits_in_use.add(target.value)
+                    elif target.is_x_target or target.is_y_target or target.is_z_target:
+                        qubits_in_use.add(target.value)
+                    else:
+                        raise ValueError('Unsupported gate target')
+
+        assert num_detectors_in_this_round == 0
+
+    def num_qubits_used(self, round: SyndromeExtractionRound) -> int:
+        return self._num_qubits_used_for[round]
+
+    def aborting_round_for_syndrome(self, syndrome: np.ndarray) -> SyndromeExtractionRound:
+        assert any(syndrome)
+        return self._aborting_rounds_for[np.argmax(syndrome)]
+
+    def aborting_round_for_detector_index(self, detector_index: int) -> SyndromeExtractionRound:
+        return self._aborting_rounds_for[detector_index]
+
+    def rounds(self) -> list[SyndromeExtractionRound]:
+        return self._rounds
+
+
 class SimulationResultsForDiscardRates:
     class Bucket:
         def __init__(self) -> None:
@@ -724,56 +805,87 @@ class SimulationResultsForDiscardRates:
 
 
 class SimulationResultsForGapThreshold:
-    def __init__(self, gap_threshold: float) -> None:
-        self.num_valid_samples_with_lookup_table = 0
-        self.num_wrong_samples_with_lookup_table = 0
-        self.num_discarded_samples_with_lookup_table = 0
-        self.num_valid_samples_without_lookup_table = 0
-        self.num_wrong_samples_without_lookup_table = 0
-        self.num_discarded_samples_without_lookup_table = 0
+    class Entry:
+        def __init__(self) -> None:
+            self._num_valid_samples: int = 0
+            self._num_wrong_samples: int = 0
+            self._num_discarded_samples: dict[SyndromeExtractionRound, int] = {}
 
-        self.num_discarded_due_to_lookup_table = 0
+        def extend(self, other: SimulationResultsForGapThreshold.Entry):
+            self._num_valid_samples += other._num_valid_samples
+            self._num_wrong_samples += other._num_wrong_samples
+            for round, count in other._num_discarded_samples.items():
+                if round not in self._num_discarded_samples:
+                    self._num_discarded_samples[round] = 0
+                self._num_discarded_samples[round] += count
+
+        def num_valid_samples(self) -> int:
+            return self._num_valid_samples
+
+        def num_wrong_samples(self) -> int:
+            return self._num_wrong_samples
+
+        def num_discarded_samples(self) -> int:
+            return sum(self._num_discarded_samples.values())
+
+        def num_discarded_samples_for(self, round: SyndromeExtractionRound) -> int:
+            return self._num_discarded_samples.get(round, 0)
+
+        def add_valid(self) -> None:
+            self._num_valid_samples += 1
+
+        def add_wrong(self) -> None:
+            self._num_wrong_samples += 1
+
+        def add_discarded(self, round: SyndromeExtractionRound) -> None:
+            if round not in self._num_discarded_samples:
+                self._num_discarded_samples[round] = 0
+            self._num_discarded_samples[round] += 1
+
+        def __len__(self):
+            return self._num_valid_samples + self._num_wrong_samples + self.num_discarded_samples()
+
+    def __init__(self, gap_threshold: float) -> None:
+        self._entry_with_lookup_table = SimulationResultsForGapThreshold.Entry()
+        self._entry_without_lookup_table = SimulationResultsForGapThreshold.Entry()
+
         self.gap_threshold = gap_threshold
 
-    def add_discarded(self) -> None:
-        self.num_discarded_samples_without_lookup_table += 1
-        self.num_discarded_samples_with_lookup_table += 1
-        len(self)
+    def add_discarded(self, round: SyndromeExtractionRound) -> None:
+        self._entry_with_lookup_table.add_discarded(round)
+        self._entry_without_lookup_table.add_discarded(round)
 
-    def add(self, gap: float, expected: bool, discarded_due_to_lookup_table: bool) -> None:
+    def add(self, gap: float, expected: bool, discarded_due_to_lookup_table: bool,
+            lookup_table_round: SyndromeExtractionRound, gap_round: SyndromeExtractionRound) -> None:
         if discarded_due_to_lookup_table:
-            self.num_discarded_samples_with_lookup_table += 1
-            self.num_discarded_due_to_lookup_table += 1
+            self._entry_with_lookup_table.add_discarded(lookup_table_round)
         if gap < self.gap_threshold:
-            self.num_discarded_samples_without_lookup_table += 1
             if not discarded_due_to_lookup_table:
-                self.num_discarded_samples_with_lookup_table += 1
+                self._entry_with_lookup_table.add_discarded(gap_round)
+            self._entry_without_lookup_table.add_discarded(gap_round)
         elif expected:
             if not discarded_due_to_lookup_table:
-                self.num_valid_samples_with_lookup_table += 1
-            self.num_valid_samples_without_lookup_table += 1
+                self._entry_with_lookup_table.add_valid()
+            self._entry_without_lookup_table.add_valid()
         else:
             if not discarded_due_to_lookup_table:
-                self.num_wrong_samples_with_lookup_table += 1
-            self.num_wrong_samples_without_lookup_table += 1
-        len(self)
+                self._entry_with_lookup_table.add_wrong()
+            self._entry_without_lookup_table.add_wrong()
+
+    def entry_with_lookup_table(self) -> SimulationResultsForGapThreshold.Entry:
+        return self._entry_with_lookup_table
+
+    def entry_without_lookup_table(self) -> SimulationResultsForGapThreshold.Entry:
+        return self._entry_without_lookup_table
 
     def extend(self, other: SimulationResultsForGapThreshold) -> None:
         assert self.gap_threshold == other.gap_threshold
-        self.num_valid_samples_with_lookup_table += other.num_valid_samples_with_lookup_table
-        self.num_wrong_samples_with_lookup_table += other.num_wrong_samples_with_lookup_table
-        self.num_discarded_samples_with_lookup_table += other.num_discarded_samples_with_lookup_table
-        self.num_valid_samples_without_lookup_table += other.num_valid_samples_without_lookup_table
-        self.num_wrong_samples_without_lookup_table += other.num_wrong_samples_without_lookup_table
-        self.num_discarded_samples_without_lookup_table += other.num_discarded_samples_without_lookup_table
-
-        self.num_discarded_due_to_lookup_table += other.num_discarded_due_to_lookup_table
+        self._entry_with_lookup_table.extend(other._entry_with_lookup_table)
+        self._entry_without_lookup_table.extend(other._entry_without_lookup_table)
 
     def __len__(self) -> int:
-        a = self.num_valid_samples_with_lookup_table + self.num_wrong_samples_with_lookup_table + \
-            self.num_discarded_samples_with_lookup_table
-        b = self.num_valid_samples_without_lookup_table + self.num_wrong_samples_without_lookup_table + \
-            self.num_discarded_samples_without_lookup_table
+        a = len(self._entry_with_lookup_table)
+        b = len(self._entry_without_lookup_table)
         assert a == b
         return a
 
@@ -804,6 +916,10 @@ def perform_simulation(
     # However, we construct a sampler from `primal_stim_circuit` because it is *the real* circuit.
     sampler = primal_stim_circuit.compile_detector_sampler(seed=seed)
     detection_events, observable_flips = sampler.sample(num_shots, separate_observables=True)
+    rounds = SyndromeExtractionRounds(primal_circuit, '')
+    lookup_table_round: SyndromeExtractionRound = \
+        rounds.aborting_round_for_detector_index(num_detectors_for_lookup_table - 1)
+    last_round = rounds.rounds()[-1]
 
     results: SimulationResults
     if gap_threshold is None:
@@ -815,7 +931,11 @@ def perform_simulation(
     for shot in range(num_shots):
         syndrome = detection_events[shot]
         if np.any(syndrome[postselection_ids] != 0):
-            results.add_discarded()
+            if isinstance(results, SimulationResultsForGapThreshold):
+                results.add_discarded(rounds.aborting_round_for_syndrome(syndrome))
+            else:
+                assert isinstance(results, SimulationResultsForDiscardRates)
+                results.add_discarded()
             continue
 
         prediction, weight = matcher.decode(syndrome, return_weight=True)
@@ -854,7 +974,7 @@ def perform_simulation(
             if lookup_table is not None:
                 bytes = syndrome[:num_detectors_for_lookup_table].tobytes()
                 discarded_due_to_lookup_table = bytes in lookup_table
-            results.add(gap, expected, discarded_due_to_lookup_table)
+            results.add(gap, expected, discarded_due_to_lookup_table, lookup_table_round, last_round)
 
     return results
 
@@ -939,6 +1059,41 @@ def perform_parallel_simulation(
             for future in futures:
                 future.cancel()
     return results
+
+
+def print_results_for_gap_threshold_entry(
+        result_entry: SimulationResultsForGapThreshold.Entry, label: str, rounds: SyndromeExtractionRounds) -> None:
+    num_valid = result_entry.num_valid_samples()
+    num_wrong = result_entry.num_wrong_samples()
+    num_discarded = result_entry.num_discarded_samples()
+    num_samples = num_valid + num_wrong + num_discarded
+
+    print(label)
+    print('  VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
+    if num_valid + num_wrong == 0:
+        print('  WRONG / (VALID + WRONG) = nan')
+    else:
+        print('  WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
+    print('  (VALID + WRONG) / SHOTS = {:.3f}'.format((num_valid + num_wrong) / num_samples))
+
+    if num_valid + num_wrong == 0:
+        print('  QUBITROUNDS = inf')
+        return
+
+    num_samples_at_this_round = num_samples
+    qubitround_so_far: float = 0
+    for round in rounds.rounds():
+        num_qubits = rounds.num_qubits_used(round)
+
+        num_discarded_at_this_round = result_entry.num_discarded_samples_for(round)
+        round_success_rate = 1 - num_discarded_at_this_round / num_samples_at_this_round
+        qubitround_so_far = (qubitround_so_far + num_qubits) / round_success_rate
+
+        num_samples_at_this_round -= num_discarded_at_this_round
+        if num_discarded_at_this_round > 0:
+            print('  DISCARDED at {} = {}, '.format(round.label, num_discarded_at_this_round))
+    assert num_samples_at_this_round == num_valid + num_wrong
+    print('  QUBITROUNDS = {:.3f}'.format(qubitround_so_far))
 
 
 def main() -> None:
@@ -1200,34 +1355,13 @@ def main() -> None:
             else:
                 print('WRONG / (VALID + WRONG) = {:.3e}'.format(w / (v + w)))
             print('(VALID + WRONG) / SHOTS = {:.3f}'.format((v + w) / num_samples))
-            print()
     else:
         assert isinstance(results, SimulationResultsForGapThreshold)
-        print('Without lookup table:')
-        num_valid = results.num_valid_samples_without_lookup_table
-        num_wrong = results.num_wrong_samples_without_lookup_table
-        num_discarded = results.num_discarded_samples_without_lookup_table
-        num_samples = num_valid + num_wrong + num_discarded
-        print('  VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
-        if num_valid + num_wrong == 0:
-            print('  WRONG / (VALID + WRONG) = nan')
-        else:
-            print('  WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
-        print('  (VALID + WRONG) / SHOTS = {:.3f}'.format((num_valid + num_wrong) / num_samples))
-        print('With lookup table:')
-        num_valid = results.num_valid_samples_with_lookup_table
-        num_wrong = results.num_wrong_samples_with_lookup_table
-        num_discarded = results.num_discarded_samples_with_lookup_table
-        num_samples = num_valid + num_wrong + num_discarded
-        print('  VALID = {}, WRONG = {}, DISCARDED = {}'.format(num_valid, num_wrong, num_discarded))
-        if num_valid + num_wrong == 0:
-            print('  WRONG / (VALID + WRONG) = nan')
-        else:
-            print('  WRONG / (VALID + WRONG) = {:.3e}'.format(num_wrong / (num_valid + num_wrong)))
-        print('  (VALID + WRONG) / SHOTS = {:.3f}'.format((num_valid + num_wrong) / num_samples))
-        print('  NUM_DISCARDED_DUE_TO_LOOKUP_TABLE = {}'.format(results.num_discarded_due_to_lookup_table))
-        print('  NUM_DISCARDED_DUE_TO_LOOKUP_TABLE / SHOTS = {}'.format(
-            results.num_discarded_due_to_lookup_table / num_samples))
+        rounds = SyndromeExtractionRounds(partially_noiseless_circuit, 'Stabilize_2')
+
+        print_results_for_gap_threshold_entry(results.entry_without_lookup_table(), 'Without lookup table:', rounds)
+        print_results_for_gap_threshold_entry(results.entry_with_lookup_table(), 'With lookup table:', rounds)
+    print()
 
 
 if __name__ == '__main__':

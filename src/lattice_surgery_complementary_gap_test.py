@@ -2,6 +2,10 @@ import unittest
 
 from lattice_surgery_complementary_gap import *
 
+
+import surface_code
+import util
+
 from typing import Type
 
 
@@ -311,3 +315,85 @@ class SteanePlusSurfaceCodeTest(unittest.TestCase):
         _ = stim_circuit.detector_error_model()
         # Assert that the circuit has a graph-like dem.
         _ = stim_circuit.detector_error_model(decompose_errors=True)
+
+
+class SyndromeExtractionRoundsTest(unittest.TestCase):
+    def _new_circuit(self) -> util.Circuit:
+        mapping = QubitMapping(20, 30)
+        circuit = util.Circuit(mapping, 0)
+
+        FOUR_WEIGHT = SurfaceStabilizerPattern.FOUR_WEIGHT
+        SURFACE_SYNDROME_MEASUREMENT_DEPTH = 6
+
+        m0 = surface_code.SurfaceZSyndromeMeasurement(circuit, (1, 1), FOUR_WEIGHT, False)
+        m1 = surface_code.SurfaceXSyndromeMeasurement(circuit, (3, 1), FOUR_WEIGHT, False)
+        m2 = surface_code.SurfaceXSyndromeMeasurement(circuit, (1, 3), FOUR_WEIGHT, False)
+        m3 = surface_code.SurfaceZSyndromeMeasurement(circuit, (3, 3), FOUR_WEIGHT, False)
+
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            m0.run()
+            circuit.place_tick()
+        circuit.place_layering_tick('Round0')
+
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            m0.run()
+            m1.run()
+            circuit.place_tick()
+        circuit.place_layering_tick('Round1')
+
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            m0.run()
+            m1.run()
+            m2.run()
+            circuit.place_tick()
+        circuit.place_layering_tick('Round2')
+
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            m3.run()
+            circuit.place_tick()
+        for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+            m3.run()
+            circuit.place_tick()
+        circuit.place_layering_tick('Round3')
+        return circuit
+
+    def test_init(self) -> None:
+        circuit = self._new_circuit()
+
+        rounds = SyndromeExtractionRounds(circuit, 'Round2')
+        self.assertEqual(rounds.rounds(), [
+            SyndromeExtractionRound('Round0', 0),
+            SyndromeExtractionRound('Round1', 1),
+            SyndromeExtractionRound('Round2', 2),
+            SyndromeExtractionRound('Round3', 3),
+        ])
+
+    def test_used_qubits(self) -> None:
+        circuit = self._new_circuit()
+
+        rounds = SyndromeExtractionRounds(circuit, 'Round2')
+
+        r0 = SyndromeExtractionRound('Round0', 0)
+        r1 = SyndromeExtractionRound('Round1', 1)
+        r2 = SyndromeExtractionRound('Round2', 2)
+        r3 = SyndromeExtractionRound('Round3', 3)
+
+        self.assertEqual(rounds.num_qubits_used(r0), 5)
+        self.assertEqual(rounds.num_qubits_used(r1), 8)
+        self.assertEqual(rounds.num_qubits_used(r2), 11)
+        self.assertEqual(rounds.num_qubits_used(r3), 5)
+
+    def test_aborting_round(self) -> None:
+        circuit = self._new_circuit()
+
+        rounds = SyndromeExtractionRounds(circuit, 'Round2')
+
+        r0 = SyndromeExtractionRound('Round0', 0)
+        r1 = SyndromeExtractionRound('Round1', 1)
+        r2 = SyndromeExtractionRound('Round2', 2)
+        r3 = SyndromeExtractionRound('Round3', 3)
+
+        self.assertEqual(rounds.aborting_round_for_syndrome(np.array([1, 1, 1, 1])), r1)
+        self.assertEqual(rounds.aborting_round_for_syndrome(np.array([0, 1, 1, 1])), r2)
+        self.assertEqual(rounds.aborting_round_for_syndrome(np.array([0, 0, 1, 1])), r2)
+        self.assertEqual(rounds.aborting_round_for_syndrome(np.array([0, 0, 0, 1])), r3)
