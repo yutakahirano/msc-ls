@@ -1090,8 +1090,8 @@ def print_results_for_gap_threshold_entry(
         qubitround_so_far = (qubitround_so_far + num_qubits) / round_success_rate
 
         num_samples_at_this_round -= num_discarded_at_this_round
-        if num_discarded_at_this_round > 0:
-            print('  DISCARDED at {} = {}, '.format(round.label, num_discarded_at_this_round))
+        print('  {}: num_qubits = {}, round success rate = {:.3f}, cost = {:.3f} '.format(
+            round.label, num_qubits, round_success_rate, qubitround_so_far))
     assert num_samples_at_this_round == num_valid + num_wrong
     print('  QUBITROUNDS = {:.3f}'.format(qubitround_so_far))
 
