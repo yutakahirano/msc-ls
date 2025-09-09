@@ -21,7 +21,7 @@ class SteanePlusSurfaceCodeTest(unittest.TestCase):
                       initial_value: InitialValue) -> SteanePlusSurfaceCode:
         mapping = QubitMapping(20, 30)
         return SteanePlusSurfaceCode(mapping, intermediate_distance, final_distance, initial_value,
-                                     SteaneSyndromeExtractionPattern.ZXZ, True, 0.001, False, False, 2, False)
+                                     SteaneSyndromeExtractionPattern.ZXZ, True, 0.001, False, False, 1, 2, False)
 
     def _perform_surface_initialization(self, c: SteanePlusSurfaceCode, initial_value: InitialValue) -> None:
         if initial_value == InitialValue.Zero:

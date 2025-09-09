@@ -44,7 +44,8 @@ class SteanePlusSurfaceCode:
                  initial_value: InitialValue, steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern,
                  perfect_initialization: bool,
                  error_probability: float, with_heuristic_post_selection: bool,
-                 full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int,
+                 full_post_selection: bool, num_stabilization_rounds_after_surgery: int,
+                 num_epilogue_syndrome_extraction_rounds: int,
                  skip_detector_for_complementary_gap: bool) -> None:
         self.mapping = mapping
         self.surface_intermediate_distance = surface_intermediate_distance
@@ -56,6 +57,7 @@ class SteanePlusSurfaceCode:
         self.error_probability = error_probability
         self.with_heuristic_post_selection = with_heuristic_post_selection
         self.full_post_selection = full_post_selection
+        self.num_stabilization_rounds_after_surgery = num_stabilization_rounds_after_surgery
         self.num_epilogue_syndrome_extraction_rounds = num_epilogue_syndrome_extraction_rounds
         self.primal_circuit = Circuit(mapping, error_probability)
         self.partially_noiseless_circuit = Circuit(mapping, error_probability)
@@ -465,6 +467,13 @@ class SteanePlusSurfaceCode:
                 m.run()
             circuit.place_tick()
         circuit.place_layering_tick('Escape!')
+
+        for i in range(self.num_stabilization_rounds_after_surgery):
+            for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
+                for m in self.surface_syndrome_measurements.values():
+                    m.run()
+                circuit.place_tick()
+            circuit.place_layering_tick('Stabilize\'_{}'.format(i))
 
         for i in range(self.num_epilogue_syndrome_extraction_rounds):
             for _ in range(SURFACE_SYNDROME_MEASUREMENT_DEPTH):
@@ -1111,6 +1120,7 @@ def main() -> None:
     parser.add_argument('--with-heuristic-post-selection', action='store_true')
     parser.add_argument('--with-heuristic-gap-calculation', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
+    parser.add_argument('--num-stabilization-rounds-after-surgery', type=int, default=3)
     parser.add_argument('--num-epilogue-syndrome-extraction-rounds', type=int, default=10)
     parser.add_argument('--discard-rates', type=str)
     parser.add_argument('--gap-threshold', type=float)
@@ -1158,6 +1168,7 @@ def main() -> None:
     print('  with-heuristic-post-selection = {}'.format(args.with_heuristic_post_selection))
     print('  with-heuristic-gap-calculation = {}'.format(args.with_heuristic_gap_calculation))
     print('  full-post-selection = {}'.format(args.full_post_selection))
+    print('  num-stabilization-rounds-after-surgery = {}'.format(args.num_stabilization_rounds_after_surgery))
     print('  num-epilogue-syndrome-extraction-rounds = {}'.format(args.num_epilogue_syndrome_extraction_rounds))
     print('  discard-rates = {}'.format(args.discard_rates))
     print('  gap-threshold = {}'.format(args.gap_threshold))
@@ -1214,6 +1225,7 @@ def main() -> None:
     with_heuristic_post_selection: bool = args.with_heuristic_post_selection
     with_heuristic_gap_calculation: bool = args.with_heuristic_gap_calculation
     full_post_selection: bool = args.full_post_selection
+    num_stabilization_rounds_after_surgery: int = args.num_stabilization_rounds_after_surgery
     num_epilogue_syndrome_extraction_rounds: int = args.num_epilogue_syndrome_extraction_rounds
     print_circuit: bool = args.print_circuit
     construct_lookup_table: bool = args.construct_lookup_table
@@ -1234,6 +1246,7 @@ def main() -> None:
         mapping, surface_intermediate_distance, surface_final_distance, initial_value,
         steane_syndrome_extraction_pattern,
         perfect_initialization, error_probability, with_heuristic_post_selection, full_post_selection,
+        num_stabilization_rounds_after_surgery,
         num_epilogue_syndrome_extraction_rounds, skip_detector_for_complementary_gap)
     primal_circuit = r.primal_circuit
     partially_noiseless_circuit = r.partially_noiseless_circuit
@@ -1264,6 +1277,7 @@ def main() -> None:
         with_heuristic_post_selection=with_heuristic_post_selection,
         with_heuristic_gap_calculation=with_heuristic_gap_calculation,
         full_post_selection=full_post_selection,
+        num_stabilization_rounds_after_surgery=num_stabilization_rounds_after_surgery,
         num_epilogue_syndrome_extraction_rounds=num_epilogue_syndrome_extraction_rounds,
         gap_threshold=gap_threshold or 0)
 

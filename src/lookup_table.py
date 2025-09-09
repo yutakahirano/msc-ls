@@ -1,44 +1,26 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pickle
 import sqlite3
 
 
+@dataclass(frozen=True, init=True, kw_only=True)
 class LookupTableKey:
-    def __init__(self, *, error_probability: float, surface_intermediate_distance: int, surface_final_distance: int,
-                 initial_value: str, steane_syndrome_extraction_pattern: str,
-                 perfect_initialization: bool, with_heuristic_post_selection: bool,
-                 with_heuristic_gap_calculation: bool,
-                 full_post_selection: bool, num_epilogue_syndrome_extraction_rounds: int,
-                 gap_threshold: float) -> None:
-        self.error_probability = error_probability
-        self.surface_intermediate_distance = surface_intermediate_distance
-        self.surface_final_distance = surface_final_distance
-        self.initial_value = initial_value
-        self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
-        self.perfect_initialization = perfect_initialization
-        self.with_heuristic_post_selection = with_heuristic_post_selection
-        self.with_heuristic_gap_calculation = with_heuristic_gap_calculation
-        self.full_post_selection = full_post_selection
-        self.num_epilogue_syndrome_extraction_rounds = num_epilogue_syndrome_extraction_rounds
-        self.gap_threshold = gap_threshold
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, LookupTableKey):
-            return NotImplemented
-        return (
-            self.error_probability == other.error_probability and
-            self.surface_intermediate_distance == other.surface_intermediate_distance and
-            self.surface_final_distance == other.surface_final_distance and
-            self.initial_value == other.initial_value and
-            self.perfect_initialization == other.perfect_initialization and
-            self.with_heuristic_post_selection == other.with_heuristic_post_selection and
-            self.with_heuristic_gap_calculation == other.with_heuristic_gap_calculation and
-            self.full_post_selection == other.full_post_selection and
-            self.num_epilogue_syndrome_extraction_rounds == other.num_epilogue_syndrome_extraction_rounds and
-            self.gap_threshold == other.gap_threshold
-        )
+    error_probability: float
+    surface_intermediate_distance: int
+    surface_final_distance: int
+    initial_value: str
+    steane_syndrome_extraction_pattern: str
+    perfect_initialization: bool
+    with_heuristic_post_selection: bool
+    with_heuristic_gap_calculation: bool
+    full_post_selection: bool
+    num_stabilization_rounds_after_surgery: int
+    num_epilogue_syndrome_extraction_rounds: int
+    gap_threshold: float
 
 
 def ensure_lookup_tables_table(con: sqlite3.Connection) -> None:
@@ -53,6 +35,7 @@ def ensure_lookup_tables_table(con: sqlite3.Connection) -> None:
             with_heuristic_post_selection BOOLEAN,
             with_heuristic_gap_calculation BOOLEAN,
             full_post_selection BOOLEAN,
+            num_stabilization_rounds_after_surgery INTEGER,
             num_epilogue_syndrome_extraction_rounds INTEGER,
             gap_threshold REAL,
             lookup_table_blob BLOB,
@@ -65,6 +48,7 @@ def ensure_lookup_tables_table(con: sqlite3.Connection) -> None:
                 with_heuristic_post_selection,
                 with_heuristic_gap_calculation,
                 full_post_selection,
+                num_stabilization_rounds_after_surgery,
                 num_epilogue_syndrome_extraction_rounds,
                 gap_threshold
             )
@@ -86,6 +70,7 @@ def query_lookup_table(con: sqlite3.Connection, key: LookupTableKey) -> LookupTa
         'with_heuristic_post_selection = ? AND '
         'with_heuristic_gap_calculation = ? AND '
         'full_post_selection = ? AND '
+        'num_stabilization_rounds_after_surgery = ? AND '
         'num_epilogue_syndrome_extraction_rounds = ? AND '
         'gap_threshold = ?', (
             key.error_probability,
@@ -97,6 +82,7 @@ def query_lookup_table(con: sqlite3.Connection, key: LookupTableKey) -> LookupTa
             key.with_heuristic_post_selection,
             key.with_heuristic_gap_calculation,
             key.full_post_selection,
+            key.num_stabilization_rounds_after_surgery,
             key.num_epilogue_syndrome_extraction_rounds,
             key.gap_threshold
         )
@@ -122,9 +108,10 @@ def store_lookup_table(
         'INSERT OR REPLACE INTO lookup_tables (error_probability, surface_intermediate_distance,'
         'surface_final_distance, initial_value, steane_syndrome_extraction_pattern, perfect_initialization,'
         'with_heuristic_post_selection, with_heuristic_gap_calculation, full_post_selection,'
+        'num_stabilization_rounds_after_surgery,'
         'num_epilogue_syndrome_extraction_rounds, gap_threshold,'
         'lookup_table_blob) VALUES '
-        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
             key.error_probability,
             key.surface_intermediate_distance,
@@ -135,6 +122,7 @@ def store_lookup_table(
             key.with_heuristic_post_selection,
             key.with_heuristic_gap_calculation,
             key.full_post_selection,
+            key.num_stabilization_rounds_after_surgery,
             key.num_epilogue_syndrome_extraction_rounds,
             key.gap_threshold,
             lookup_table_blob

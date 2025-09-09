@@ -18,6 +18,7 @@ def main() -> None:
     parser.add_argument('--with-heuristic-post-selection', action='store_true')
     parser.add_argument('--with-heuristic-gap-calculation', action='store_true')
     parser.add_argument('--full-post-selection', action='store_true')
+    parser.add_argument('--num-stabilization-rounds-after-surgery', type=int, default=3)
     parser.add_argument('--num-epilogue-syndrome-extraction-rounds', type=int, default=10)
     parser.add_argument('--gap-threshold', type=float)
     parser.add_argument('--interval', type=int, default=1)
@@ -43,6 +44,7 @@ def main() -> None:
     print('  with-heuristic-post-selection = {}'.format(args.with_heuristic_post_selection))
     print('  with-heuristic-gap-calculation = {}'.format(args.with_heuristic_gap_calculation))
     print('  full-post-selection = {}'.format(args.full_post_selection))
+    print('  num-stabilization-rounds-after-surgery = {}'.format(args.num_stabilization_rounds_after_surgery))
     print('  num-epilogue-syndrome-extraction-rounds = {}'.format(args.num_epilogue_syndrome_extraction_rounds))
     print('  gap-threshold = {}'.format(args.gap_threshold))
     print('  interval = {}'.format(args.interval))
@@ -66,6 +68,7 @@ def main() -> None:
     with_heuristic_post_selection: bool = args.with_heuristic_post_selection
     with_heuristic_gap_calculation: bool = args.with_heuristic_gap_calculation
     full_post_selection: bool = args.full_post_selection
+    num_stabilization_rounds_after_surgery: int = args.num_stabilization_rounds_after_surgery
     num_epilogue_syndrome_extraction_rounds: int = args.num_epilogue_syndrome_extraction_rounds
     interval = args.interval
 
@@ -79,6 +82,7 @@ def main() -> None:
         with_heuristic_post_selection=with_heuristic_post_selection,
         with_heuristic_gap_calculation=with_heuristic_gap_calculation,
         full_post_selection=full_post_selection,
+        num_stabilization_rounds_after_surgery=num_stabilization_rounds_after_surgery,
         num_epilogue_syndrome_extraction_rounds=num_epilogue_syndrome_extraction_rounds,
         gap_threshold=gap_threshold)
 
