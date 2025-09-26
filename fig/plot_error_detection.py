@@ -64,6 +64,7 @@ def main() -> None:
     stats = translate_to_sinter_tasks(TASKS)
 
     fig, ax = plt.subplots(figsize=(6, 5))
+    ax.set_xscale('log')
     ax.set_xlabel('Physical error rate')
     ax.set_xlim(0.0005 / 1.05, 0.0020 * 1.05)
 
@@ -90,8 +91,8 @@ def main() -> None:
     ax.grid(which='major', color='#000000')
     ax.grid(which='minor', color='#DDDDDD')
     ax.legend()
+    fig.tight_layout()
     fig.savefig(output_filename)
-    plt.show()
 
 
 if __name__ == '__main__':

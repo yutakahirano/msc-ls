@@ -6,6 +6,7 @@ import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+
 @dataclass
 class Entry:
     num_entries: int
@@ -82,13 +83,13 @@ ENTRIES: list[Entry] = [
 
 
 def plot_series(
-    ax: plt.Axes,
-    seriese: Iterable[Entry],
-    *,
-    label: str | None = None,
-    color: str | None = None,
-    marker: str | None = None,
-    linewidth: int | None = None) -> None:
+        ax: plt.Axes,
+        seriese: Iterable[Entry],
+        *,
+        label: str | None = None,
+        color: str | None = None,
+        marker: str | None = None,
+        linewidth: int | None = None) -> None:
     xs: list[float] = []
     ys: list[float] = []
     for entry in seriese:
@@ -122,8 +123,8 @@ def main() -> None:
     ax.grid(which='major', color='#000000')
     ax.grid(which='minor', color='#DDDDDD')
     ax.legend()
+    fig.tight_layout()
     fig.savefig(output_filename)
-    plt.show()
 
 
 if __name__ == '__main__':
