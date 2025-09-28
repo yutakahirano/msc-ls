@@ -65,11 +65,11 @@ def main() -> None:
 
     fig, ax = plt.subplots(figsize=(6, 5))
     ax.set_xscale('log')
-    ax.set_xlabel('Physical error rate')
+    ax.set_xlabel('Physical error probability')
     ax.set_xlim(0.0005 / 1.05, 0.0020 * 1.05)
 
     ax.set_yscale('log')
-    ax.set_ylabel('Logical error rate')
+    ax.set_ylabel('Logical error probability')
     ax.set_ylim(1e-8, 1e-5)
 
     def group_func(m: sinter.AnonTaskStats) -> dict[str, str]:

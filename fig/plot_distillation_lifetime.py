@@ -130,12 +130,12 @@ def main():
     output_filename_with = args.out.format('with-lookup-table')
 
     caption_without = (
-        'MSC-LS without Lookup Table\n'
+        'MSC-LS without the lookup table\n'
         '$d_{{intermediate}} = 5$, $d_{{final}} = 11$, $gap = 15.48$\n'
         '(expected qubit·rounds=6044)'
     )
     caption_with = (
-        'MSC-LS with Lookup Table\n'
+        'MSC-LS with the lookup table\n'
         '$d_{{intermediate}} = 5$, $d_{{final}} = 11$, $gap = 15.48$\n'
         '(expected qubit·rounds=5127)'
     )
