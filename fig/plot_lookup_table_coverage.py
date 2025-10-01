@@ -122,7 +122,6 @@ def main() -> None:
 
     ax.grid(which='major', color='#000000')
     ax.grid(which='minor', color='#DDDDDD')
-    ax.legend()
     fig.tight_layout()
     fig.savefig(output_filename)
 
