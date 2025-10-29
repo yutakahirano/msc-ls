@@ -1,6 +1,6 @@
 # Efficient magic state cultivation with lattice surgery
 
-This repository contains the code used in the paper  
+This repository contains the code used in the paper
 ["Efficient magic state cultivation with lattice surgery" (arXiv:2510.24615)](https://arxiv.org/abs/2510.24615).
 
 The code used to generate the figures in the paper is available in the branch [`experiment-2025-sep`](https://github.com/yutakahirano/msc-ls/tree/experiment-2025-sep).
