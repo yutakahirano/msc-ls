@@ -111,5 +111,6 @@ def main() -> None:
     fig.tight_layout()
     fig.savefig(output_filename)
 
+
 if __name__ == '__main__':
     main()
