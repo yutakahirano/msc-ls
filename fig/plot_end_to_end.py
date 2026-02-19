@@ -1,11 +1,12 @@
 import argparse
 import matplotlib.pyplot as plt
+import sinter
 import sys
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from sinter import Fit, fit_binomial
 from typing import Any
-from sinter._probability_util import fit_binomial, Fit
 
 
 @dataclass
@@ -79,8 +80,8 @@ def plot_series(
 
     for task in series:
         num_shots = task.num_valid_cases + task.num_wrong_cases + task.num_discarded_cases
-        r: Fit = fit_binomial(num_shots=task.num_valid_cases + task.num_wrong_cases,
-                              num_hits=task.num_wrong_cases, max_likelihood_factor=1e3)
+        r: sinter.Fit = sinter.fit_binomial(num_shots=task.num_valid_cases + task.num_wrong_cases,
+                                            num_hits=task.num_wrong_cases, max_likelihood_factor=1e3)
 
         x = (task.num_valid_cases + task.num_wrong_cases) / num_shots
         xs.append(x)
