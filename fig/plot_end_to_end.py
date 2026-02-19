@@ -5,6 +5,7 @@ import sys
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
+from sinter._probability_util import fit_binomial, Fit
 
 
 @dataclass
@@ -66,21 +67,29 @@ assert all(t.num_valid_cases + t.num_wrong_cases + t.num_discarded_cases == 1e+9
 
 def plot_series(
         ax: plt.Axes,
-        seriese: Iterable[Task],
+        series: Iterable[Task],
         *,
         label: str,
         color: str,
         marker: str) -> None:
     xs: list[float] = []
-    ys: list[float] = []
-    for task in seriese:
-        num_shots = task.num_valid_cases + task.num_wrong_cases + task.num_discarded_cases
-        x = (task.num_valid_cases + task.num_wrong_cases) / num_shots
-        y = (task.num_wrong_cases) / (task.num_valid_cases + task.num_wrong_cases)
-        xs.append(x)
-        ys.append(y)
+    ys_low: list[float] = []
+    ys_best: list[float] = []
+    ys_high: list[float] = []
 
-    ax.plot(xs, ys, label=label, color=color, marker=marker)
+    for task in series:
+        num_shots = task.num_valid_cases + task.num_wrong_cases + task.num_discarded_cases
+        r: Fit = fit_binomial(num_shots=task.num_valid_cases + task.num_wrong_cases,
+                              num_hits=task.num_wrong_cases, max_likelihood_factor=1e3)
+
+        x = (task.num_valid_cases + task.num_wrong_cases) / num_shots
+        xs.append(x)
+        ys_low.append(r.low)
+        ys_best.append(r.best)
+        ys_high.append(r.high)
+
+    ax.plot(xs, ys_best, label=label, color=color, marker=marker)
+    ax.fill_between(xs, ys_low, ys_high, alpha=0.2, color=color, zorder=-1)
 
 
 def main() -> None:
