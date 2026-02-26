@@ -1768,12 +1768,12 @@ def lattice_surgery_generator_zz(
 
     # CX(1)
     # For 0145
-    circuit.place_cx(STEANE_4, A_0145_4)
-    circuit.place_cx(STEANE_0, A_0145_015)
+    circuit.place_cx(STEANE_5, A_0145_015)
     # For 0235
-    circuit.place_cx(STEANE_5, A_0235_035)
+    circuit.place_cx(STEANE_0, A_0235_035)
+    circuit.place_cx(STEANE_2, A_0235_2)
     # For 0246
-    circuit.place_cx(STEANE_2_, A_0246_02)
+    circuit.place_cx(STEANE_6, A_0246_46)
 
     circuit.place_cx(STEANE_1, A_1A_R)
     # Surface(2)
@@ -1785,9 +1785,10 @@ def lattice_surgery_generator_zz(
     # For 0145
     circuit.place_cx(STEANE_1, A_0145_015)
     # For 0235
-    circuit.place_cx(STEANE_0, A_0235_035)
+    circuit.place_cx(STEANE_5, A_0235_035)
     # For 0246
-    circuit.place_cx(STEANE_6, A_0246_46)
+    circuit.place_cx(STEANE_4, A_0246_46)
+    circuit.place_cx(STEANE_0, A_0246_02)
 
     circuit.place_cx(SURFACE_A, A_1A_R)
     # Surface(3); STEANE_3 is accessed by the corresponding surface syndrome measurement.
@@ -1797,13 +1798,12 @@ def lattice_surgery_generator_zz(
 
     # CX(3)
     # For 0145
-    circuit.place_cx(STEANE_5, A_0145_015)
+    circuit.place_cx(STEANE_4, A_0145_4)
+    circuit.place_cx(STEANE_0, A_0145_015)
     # For 0235
     circuit.place_cx(STEANE_3, A_0235_035)
-    circuit.place_cx(STEANE_2, A_0235_2)
     # For 0246
-    circuit.place_cx(STEANE_4, A_0246_46)
-    circuit.place_cx(STEANE_0, A_0246_02)
+    circuit.place_cx(STEANE_2_, A_0246_02)
 
     left_boundary_measurement: MeasurementIdentifier = circuit.place_measurement_z(A_1A_R)
     # Surface(4)
