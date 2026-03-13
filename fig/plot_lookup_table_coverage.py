@@ -113,7 +113,7 @@ def main() -> None:
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.set_xlabel('Coverage', fontsize=16)
-    ax.set_xlim(0, 0.1)
+    ax.set_xlim(0.07, 0.1)
 
     ax.set_ylabel('#entries', fontsize=16)
     ax.set_ylim(0, 160_000)
