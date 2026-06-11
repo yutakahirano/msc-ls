@@ -6,10 +6,12 @@ import numpy as np
 import pickle
 import sqlite3
 
+from util import NoiseConfiguration
+
 
 @dataclass(frozen=True, init=True, kw_only=True)
 class LookupTableKey:
-    error_probability: float
+    noise_conf: NoiseConfiguration
     surface_intermediate_distance: int
     surface_final_distance: int
     initial_value: str
@@ -26,7 +28,11 @@ class LookupTableKey:
 def ensure_lookup_tables_table(con: sqlite3.Connection) -> None:
     con.execute('''
         CREATE TABLE IF NOT EXISTS lookup_tables (
-            error_probability REAL,
+            single_qubit_gate_error_probability REAL,
+            two_qubit_gate_error_probability REAL,
+            reset_error_probability REAL,
+            measurement_error_probability REAL,
+            idle_error_probability REAL,
             surface_intermediate_distance INTEGER,
             surface_final_distance INTEGER,
             initial_value TEXT,
@@ -40,7 +46,11 @@ def ensure_lookup_tables_table(con: sqlite3.Connection) -> None:
             gap_threshold REAL,
             lookup_table_blob BLOB,
             PRIMARY KEY (
-                error_probability,
+                single_qubit_gate_error_probability,
+                two_qubit_gate_error_probability,
+                reset_error_probability,
+                measurement_error_probability,
+                idle_error_probability,
                 surface_intermediate_distance,
                 surface_final_distance,
                 initial_value,
@@ -61,7 +71,11 @@ def query_lookup_table(con: sqlite3.Connection, key: LookupTableKey) -> LookupTa
     cur = con.cursor()
     res = cur.execute(
         'SELECT lookup_table_blob from lookup_tables WHERE '
-        'error_probability = ? AND '
+        'single_qubit_gate_error_probability = ? AND '
+        'two_qubit_gate_error_probability = ? AND '
+        'reset_error_probability = ? AND '
+        'measurement_error_probability = ? AND '
+        'idle_error_probability = ? AND '
         'surface_intermediate_distance = ? AND '
         'surface_final_distance = ? AND '
         'initial_value = ? AND '
@@ -73,7 +87,11 @@ def query_lookup_table(con: sqlite3.Connection, key: LookupTableKey) -> LookupTa
         'num_stabilization_rounds_after_surgery = ? AND '
         'num_epilogue_syndrome_extraction_rounds = ? AND '
         'gap_threshold = ?', (
-            key.error_probability,
+            key.noise_conf.single_qubit_gate_error_probability,
+            key.noise_conf.two_qubit_gate_error_probability,
+            key.noise_conf.reset_error_probability,
+            key.noise_conf.measurement_error_probability,
+            key.noise_conf.idle_error_probability,
             key.surface_intermediate_distance,
             key.surface_final_distance,
             key.initial_value,
@@ -105,15 +123,20 @@ def store_lookup_table(
     lookup_table_blob = pickle.dumps(lookup_table)
 
     cur.execute(
-        'INSERT OR REPLACE INTO lookup_tables (error_probability, surface_intermediate_distance,'
-        'surface_final_distance, initial_value, steane_syndrome_extraction_pattern, perfect_initialization,'
-        'with_heuristic_post_selection, with_heuristic_gap_calculation, full_post_selection,'
+        'INSERT OR REPLACE INTO lookup_tables (single_qubit_gate_error_probability, two_qubit_gate_error_probability, '
+        'reset_error_probability, measurement_error_probability, idle_error_probability, '
+        'surface_intermediate_distance, surface_final_distance, initial_value, steane_syndrome_extraction_pattern, '
+        'perfect_initialization, with_heuristic_post_selection, with_heuristic_gap_calculation, full_post_selection,'
         'num_stabilization_rounds_after_surgery,'
         'num_epilogue_syndrome_extraction_rounds, gap_threshold,'
         'lookup_table_blob) VALUES '
-        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         (
-            key.error_probability,
+            key.noise_conf.single_qubit_gate_error_probability,
+            key.noise_conf.two_qubit_gate_error_probability,
+            key.noise_conf.reset_error_probability,
+            key.noise_conf.measurement_error_probability,
+            key.noise_conf.idle_error_probability,
             key.surface_intermediate_distance,
             key.surface_final_distance,
             key.initial_value,

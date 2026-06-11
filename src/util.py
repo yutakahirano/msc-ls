@@ -1,9 +1,11 @@
 from __future__ import annotations
+import copy
 
 
 import stim
 
 from typing import Any
+from dataclasses import dataclass
 
 
 POST_SELECTION_TAG: str = 'POST-SELECTION'
@@ -76,6 +78,21 @@ class ObservableIdentifier:
         return self.id == other.id
 
 
+@dataclass(frozen=True)
+class NoiseConfiguration:
+    single_qubit_gate_error_probability: float
+    two_qubit_gate_error_probability: float
+    reset_error_probability: float
+    measurement_error_probability: float
+    idle_error_probability: float
+
+    @staticmethod
+    def create_uniform(p: float) -> NoiseConfiguration:
+        return NoiseConfiguration(p, p, p, p, p)
+
+
+NO_ERROR_CONF = NoiseConfiguration(0, 0, 0, 0, 0)
+
 class Circuit:
     '''\
     A wrapper for stim.Circuit.
@@ -87,9 +104,12 @@ class Circuit:
       - Noise is automatically inserted when gates are placed.
       - Measurement, detector, and observable IDs are strongly typed.
     '''
-    def __init__(self, mapping: QubitMapping, error_probability: float):
+    def __init__(self, mapping: QubitMapping, noise_conf: NoiseConfiguration | float):
         self.mapping = mapping
-        self.error_probability = error_probability
+        if isinstance(noise_conf, NoiseConfiguration):
+            self.noise_conf = noise_conf
+        else:
+            self.noise_conf = NoiseConfiguration.create_uniform(noise_conf)
         self.circuit = stim.Circuit()
         for id, (x, y) in mapping.mapping:
             self.circuit.append('QUBIT_COORDS', id, (x, y))
@@ -99,13 +119,13 @@ class Circuit:
 
     def place_tick(self) -> None:
         '''Adds idling noise, and places a TICK virtual gate.'''
-        if self.error_probability > 0:
+        if self.noise_conf.idle_error_probability > 0:
             for id, (x, y) in self.mapping.mapping:
                 if id in self.tainted_qubits:
                     continue
                 if id in self.noiseless_qubits:
                     continue
-                self.circuit.append('DEPOLARIZE1', id, self.error_probability)
+                self.circuit.append('DEPOLARIZE1', id, self.noise_conf.idle_error_probability)
         self.tainted_qubits.clear()
         self.circuit.append('TICK')
 
@@ -139,8 +159,8 @@ class Circuit:
         if target in self.tainted_qubits:
             raise ValueError(f'Cannot place {gate} gate on tainted qubit.')
         self.circuit.append(gate, target)
-        if target not in self.noiseless_qubits and self.error_probability > 0:
-            self.circuit.append('DEPOLARIZE1', target, self.error_probability)
+        if target not in self.noiseless_qubits and self.noise_conf.single_qubit_gate_error_probability > 0:
+            self.circuit.append('DEPOLARIZE1', target, self.noise_conf.single_qubit_gate_error_probability)
         self.tainted_qubits.append(target)
 
     def place_cx(self, control_position: tuple[int, int], target_position: tuple[int, int]) -> None:
@@ -153,15 +173,15 @@ class Circuit:
         if control in self.tainted_qubits or target in self.tainted_qubits:
             raise ValueError(f'Cannot place CX gate on tainted qubits.')
         self.circuit.append('CX', (control, target))
-        if self.error_probability > 0:
+        if self.noise_conf.two_qubit_gate_error_probability > 0:
             if control in self.noiseless_qubits and target in self.noiseless_qubits:
                 pass
             elif control in self.noiseless_qubits:
-                self.circuit.append('DEPOLARIZE1', [target], self.error_probability)
+                self.circuit.append('DEPOLARIZE1', [target], self.noise_conf.two_qubit_gate_error_probability)
             elif target in self.noiseless_qubits:
-                self.circuit.append('DEPOLARIZE1', [control], self.error_probability)
+                self.circuit.append('DEPOLARIZE1', [control], self.noise_conf.two_qubit_gate_error_probability)
             else:
-                self.circuit.append('DEPOLARIZE2', [control, target], self.error_probability)
+                self.circuit.append('DEPOLARIZE2', [control, target], self.noise_conf.two_qubit_gate_error_probability)
         self.tainted_qubits.append(control)
         self.tainted_qubits.append(target)
 
@@ -171,8 +191,8 @@ class Circuit:
         if target in self.tainted_qubits:
             raise ValueError(f'Cannot place reset Z gate on tainted qubit.')
         self.circuit.append('R', target)
-        if target not in self.noiseless_qubits and self.error_probability > 0:
-            self.circuit.append('X_ERROR', target, self.error_probability)
+        if target not in self.noiseless_qubits and self.noise_conf.reset_error_probability > 0:
+            self.circuit.append('X_ERROR', target, self.noise_conf.reset_error_probability)
         self.tainted_qubits.append(target)
 
     def place_reset_x(self, target_position: tuple[int, int]) -> None:
@@ -181,8 +201,8 @@ class Circuit:
         if target in self.tainted_qubits:
             raise ValueError(f'Cannot place reset X gate on tainted qubit.')
         self.circuit.append('RX', target)
-        if target not in self.noiseless_qubits and self.error_probability > 0:
-            self.circuit.append('Z_ERROR', target, self.error_probability)
+        if target not in self.noiseless_qubits and self.noise_conf.reset_error_probability > 0:
+            self.circuit.append('Z_ERROR', target, self.noise_conf.reset_error_probability)
         self.tainted_qubits.append(target)
 
     def place_measurement_z(self, target_position: tuple[int, int]) -> MeasurementIdentifier:
@@ -190,8 +210,8 @@ class Circuit:
         target = self.mapping.get_id(*target_position)
         if target in self.tainted_qubits:
             raise ValueError(f'Cannot place measurement Z gate on tainted qubit.')
-        if target not in self.noiseless_qubits and self.error_probability > 0:
-            self.circuit.append('X_ERROR', target, self.error_probability)
+        if target not in self.noiseless_qubits and self.noise_conf.measurement_error_probability > 0:
+            self.circuit.append('X_ERROR', target, self.noise_conf.measurement_error_probability)
 
         self.circuit.append('M', target)
         self.tainted_qubits.append(target)
@@ -202,8 +222,8 @@ class Circuit:
         target = self.mapping.get_id(*target_position)
         if target in self.tainted_qubits:
             raise ValueError(f'Cannot place measurement X gate on tainted qubit.')
-        if target not in self.noiseless_qubits and self.error_probability > 0:
-            self.circuit.append('Z_ERROR', target, self.error_probability)
+        if target not in self.noiseless_qubits and self.noise_conf.measurement_error_probability > 0:
+            self.circuit.append('Z_ERROR', target, self.noise_conf.measurement_error_probability)
         self.circuit.append('MX', target)
         self.tainted_qubits.append(target)
         return MeasurementIdentifier(self.circuit.num_measurements - 1)
@@ -219,15 +239,15 @@ class Circuit:
             if p == 0:
                 continue
             self.tainted_qubits.append(i)
-            if i in self.noiseless_qubits or self.error_probability == 0:
+            if i in self.noiseless_qubits or self.noise_conf.measurement_error_probability == 0:
                 continue
             match p:
                 case 1:  # X
-                    self.circuit.append('Z_ERROR', i, self.error_probability)
+                    self.circuit.append('Z_ERROR', i, self.noise_conf.measurement_error_probability)
                 case 2:  # Y
-                    self.circuit.append('Z_ERROR', i, self.error_probability)
+                    self.circuit.append('Z_ERROR', i, self.noise_conf.measurement_error_probability)
                 case 3:  # Z
-                    self.circuit.append('X_ERROR', i, self.error_probability)
+                    self.circuit.append('X_ERROR', i, self.noise_conf.measurement_error_probability)
                 case _:
                     raise ValueError(f'Invalid Pauli value {p} for qubit {i}.')
         self.circuit.append('MPP', [target])
@@ -349,26 +369,26 @@ class SuppressNoise:
     '''
     def __init__(self, circuit: Circuit | MultiplexingCircuit):
         self.circuit = circuit
-        self.error_probability: float | None = None
+        self.noise_conf: NoiseConfiguration | None = None
 
     def __enter__(self):
-        assert self.error_probability is None
+        assert self.noise_conf is None
         if isinstance(self.circuit, Circuit):
-            self.error_probability = self.circuit.error_probability
-            self.circuit.error_probability = 0
+            self.noise_conf = self.circuit.noise_conf
+            self.circuit.noise_conf = NO_ERROR_CONF
         else:
             assert isinstance(self.circuit, MultiplexingCircuit)
-            assert self.circuit.circuit1.error_probability == self.circuit.circuit2.error_probability
-            self.error_probability = self.circuit.circuit1.error_probability
-            self.circuit.circuit1.error_probability = 0
-            self.circuit.circuit2.error_probability = 0
+            assert self.circuit.circuit1.noise_conf == self.circuit.circuit2.noise_conf
+            self.noise_conf = copy.deepcopy(self.circuit.circuit1.noise_conf)
+            self.circuit.circuit1.noise_conf = NO_ERROR_CONF
+            self.circuit.circuit2.noise_conf = NO_ERROR_CONF
 
     def __exit__(self, ex_type, ex_value, trace):
-        assert self.error_probability is not None
+        assert self.noise_conf is not None
         if isinstance(self.circuit, Circuit):
-            self.circuit.error_probability = self.error_probability
+            self.circuit.noise_conf = self.noise_conf
         else:
             assert isinstance(self.circuit, MultiplexingCircuit)
-            self.circuit.circuit1.error_probability = self.error_probability
-            self.circuit.circuit2.error_probability = self.error_probability
-        self.error_probability = None
+            self.circuit.circuit1.noise_conf = self.noise_conf
+            self.circuit.circuit2.noise_conf = copy.deepcopy(self.noise_conf)
+        self.noise_conf = None

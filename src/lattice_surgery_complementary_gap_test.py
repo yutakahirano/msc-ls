@@ -20,8 +20,14 @@ class SteanePlusSurfaceCodeTest(unittest.TestCase):
     def _new_instance(self, intermediate_distance: int, final_distance: int,
                       initial_value: InitialValue) -> SteanePlusSurfaceCode:
         mapping = QubitMapping(20, 30)
+        noise_conf = util.NoiseConfiguration(
+            single_qubit_gate_error_probability=0.001,
+            two_qubit_gate_error_probability=0.001,
+            reset_error_probability=0.001,
+            measurement_error_probability=0.001,
+            idle_error_probability=0.001)
         return SteanePlusSurfaceCode(mapping, intermediate_distance, final_distance, initial_value,
-                                     SteaneSyndromeExtractionPattern.ZXZ, True, 0.001, False, False, 1, 2, False)
+                                     SteaneSyndromeExtractionPattern.ZXZ, True, noise_conf, False, False, 1, 2, False)
 
     def _perform_surface_initialization(self, c: SteanePlusSurfaceCode, initial_value: InitialValue) -> None:
         if initial_value == InitialValue.Zero:

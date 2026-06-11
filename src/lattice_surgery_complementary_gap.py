@@ -18,7 +18,7 @@ import steane_code
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from enum import auto
-from util import QubitMapping, Circuit, MultiplexingCircuit
+from util import QubitMapping, Circuit, MultiplexingCircuit, NoiseConfiguration
 from util import MeasurementIdentifier, DetectorIdentifier, ObservableIdentifier, SuppressNoise
 from surface_code import SurfaceStabilizerPattern, SurfaceSyndromeMeasurement
 from surface_code import SurfaceXSyndromeMeasurement, SurfaceZSyndromeMeasurement
@@ -43,7 +43,7 @@ class SteanePlusSurfaceCode:
     def __init__(self, mapping: QubitMapping, surface_intermediate_distance: int, surface_final_distance: int,
                  initial_value: InitialValue, steane_syndrome_extraction_pattern: SteaneSyndromeExtractionPattern,
                  perfect_initialization: bool,
-                 error_probability: float, with_heuristic_post_selection: bool,
+                 noise_conf: NoiseConfiguration, with_heuristic_post_selection: bool,
                  full_post_selection: bool, num_stabilization_rounds_after_surgery: int,
                  num_epilogue_syndrome_extraction_rounds: int,
                  skip_detector_for_complementary_gap: bool) -> None:
@@ -54,13 +54,13 @@ class SteanePlusSurfaceCode:
         self.initial_value = initial_value
         self.steane_syndrome_extraction_pattern = steane_syndrome_extraction_pattern
         self.perfect_initialization = perfect_initialization
-        self.error_probability = error_probability
+        self.noise_conf = noise_conf
         self.with_heuristic_post_selection = with_heuristic_post_selection
         self.full_post_selection = full_post_selection
         self.num_stabilization_rounds_after_surgery = num_stabilization_rounds_after_surgery
         self.num_epilogue_syndrome_extraction_rounds = num_epilogue_syndrome_extraction_rounds
-        self.primal_circuit = Circuit(mapping, error_probability)
-        self.partially_noiseless_circuit = Circuit(mapping, error_probability)
+        self.primal_circuit = Circuit(mapping, noise_conf)
+        self.partially_noiseless_circuit = Circuit(mapping, noise_conf)
         noiseless_qubits: list[tuple[int, int]] = []
         if full_post_selection:
             for y in range(0, mapping.height):
@@ -1109,6 +1109,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='description')
     parser.add_argument('--num-shots', type=int, default=1000)
     parser.add_argument('--error-probability', type=float, default=0)
+    parser.add_argument('--single-qubit-gate-error-probability', type=float, required=False)
+    parser.add_argument('--two-qubit-gate-error-probability', type=float, required=False)
+    parser.add_argument('--reset-error-probability', type=float, required=False)
+    parser.add_argument('--measurement-error-probability', type=float, required=False)
+    parser.add_argument('--idle-error-probability', type=float, required=False)
     parser.add_argument('--parallelism', type=int, default=1)
     parser.add_argument('--max-shots-per-task', type=int, default=2 ** 20)
     parser.add_argument('--surface-intermediate-distance', type=int, default=None)
@@ -1158,6 +1163,11 @@ def main() -> None:
 
     print('  num-shots = {}'.format(args.num_shots))
     print('  error-probability = {}'.format(args.error_probability))
+    print('  single-qubit-gate-error-probability = {}'.format(args.single_qubit_gate_error_probability))
+    print('  two-qubit-gate-error-probability = {}'.format(args.two_qubit_gate_error_probability))
+    print('  reset-error-probability = {}'.format(args.reset_error_probability))
+    print('  measurement-error-probability = {}'.format(args.measurement_error_probability))
+    print('  idle-error-probability = {}'.format(args.idle_error_probability))
     print('  parallelism = {}'.format(args.parallelism))
     print('  max-shots-per-task = {}'.format(args.max_shots_per_task))
     print('  surface-intermediate-distance = {}'.format(args.surface_intermediate_distance))
@@ -1183,7 +1193,23 @@ def main() -> None:
     print('  show-progress = {}'.format(args.show_progress))
 
     num_shots: int = args.num_shots
-    error_probability: float = args.error_probability
+    default_error_probability: float = args.error_probability
+    single_qubit_gate_error_probability: float = default_error_probability
+    if args.single_qubit_gate_error_probability is not None:
+        single_qubit_gate_error_probability = args.single_qubit_gate_error_probability
+    two_qubit_gate_error_probability: float = default_error_probability
+    if args.two_qubit_gate_error_probability is not None:
+        two_qubit_gate_error_probability = args.two_qubit_gate_error_probability
+    reset_error_probability: float = default_error_probability
+    if args.reset_error_probability is not None:
+        reset_error_probability = args.reset_error_probability
+    measurement_error_probability: float = default_error_probability
+    if args.measurement_error_probability is not None:
+        measurement_error_probability = args.measurement_error_probability
+    idle_error_probability: float = default_error_probability
+    if args.idle_error_probability is not None:
+        idle_error_probability = args.idle_error_probability
+
     parallelism: int = args.parallelism
     max_shots_per_task: int = args.max_shots_per_task
     surface_final_distance: int = args.surface_final_distance
@@ -1242,10 +1268,16 @@ def main() -> None:
         return
 
     mapping = QubitMapping(30, 40)
+    noise_conf = NoiseConfiguration(
+        single_qubit_gate_error_probability=single_qubit_gate_error_probability,
+        two_qubit_gate_error_probability=two_qubit_gate_error_probability,
+        reset_error_probability=reset_error_probability,
+        measurement_error_probability=measurement_error_probability,
+        idle_error_probability=idle_error_probability)
     r = SteanePlusSurfaceCode(
         mapping, surface_intermediate_distance, surface_final_distance, initial_value,
         steane_syndrome_extraction_pattern,
-        perfect_initialization, error_probability, with_heuristic_post_selection, full_post_selection,
+        perfect_initialization, noise_conf, with_heuristic_post_selection, full_post_selection,
         num_stabilization_rounds_after_surgery,
         num_epilogue_syndrome_extraction_rounds, skip_detector_for_complementary_gap)
     primal_circuit = r.primal_circuit
@@ -1268,7 +1300,7 @@ def main() -> None:
     assert detector_for_complementary_gap is not None
 
     lookup_table_key = LookupTableKey(
-        error_probability=error_probability,
+        noise_conf=noise_conf,
         surface_intermediate_distance=surface_intermediate_distance,
         surface_final_distance=surface_final_distance,
         initial_value=initial_value.name,
@@ -1374,7 +1406,8 @@ def main() -> None:
         rounds = SyndromeExtractionRounds(partially_noiseless_circuit, 'Stabilize_2')
 
         print_results_for_gap_threshold_entry(results.entry_without_lookup_table(), 'Without lookup table:', rounds)
-        print_results_for_gap_threshold_entry(results.entry_with_lookup_table(), 'With lookup table:', rounds)
+        if lookup_table is not None:
+            print_results_for_gap_threshold_entry(results.entry_with_lookup_table(), 'With lookup table:', rounds)
     print()
 
 

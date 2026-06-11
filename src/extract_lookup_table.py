@@ -4,11 +4,16 @@ import sys
 
 from lookup_table import LookupTableKey, LookupTableWithNegativeSamplesOnly
 from lookup_table import ensure_lookup_tables_table, query_lookup_table
+from util import NoiseConfiguration
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='description')
-    parser.add_argument('--error-probability', type=float, default=0)
+    parser.add_argument('--single-qubit-gate-error-probability', type=float)
+    parser.add_argument('--two-qubit-gate-error-probability', type=float)
+    parser.add_argument('--reset-error-probability', type=float)
+    parser.add_argument('--measurement-error-probability', type=float)
+    parser.add_argument('--idle-error-probability', type=float)
     parser.add_argument('--surface-intermediate-distance', type=int, default=None)
     parser.add_argument('--surface-final-distance', type=int, default=3)
     parser.add_argument('--initial-value', choices=['+', '0', 'S+'], default='+')
@@ -35,7 +40,11 @@ def main() -> None:
     elif args.imperfect_initialization:
         perfect_initialization = False
 
-    print('  error-probability = {}'.format(args.error_probability))
+    print('  single-qubit-gate-error-probability = {}'.format(args.single_qubit_gate_error_probability))
+    print('  two-qubit-gate-error-probability = {}'.format(args.two_qubit_gate_error_probability))
+    print('  reset-error-probability = {}'.format(args.reset_error_probability))
+    print('  measurement-error-probability = {}'.format(args.measurement_error_probability))
+    print('  idle-error-probability = {}'.format(args.idle_error_probability))
     print('  surface-intermediate-distance = {}'.format(args.surface_intermediate_distance))
     print('  surface-final-distance = {}'.format(args.surface_final_distance))
     print('  initial-value = {}'.format(args.initial_value))
@@ -49,7 +58,13 @@ def main() -> None:
     print('  gap-threshold = {}'.format(args.gap_threshold))
     print('  interval = {}'.format(args.interval))
 
-    error_probability: float = args.error_probability
+    noise_conf = NoiseConfiguration(
+        single_qubit_gate_error_probability=args.single_qubit_gate_error_probability,
+        two_qubit_gate_error_probability=args.two_qubit_gates_error_probability,
+        reset_error_probability=args.reset_error_probability,
+        measurement_error_probability=args.measurement_error_probability,
+        idle_error_probability=args.idle_error_probability
+    )
     surface_final_distance: int = args.surface_final_distance
     surface_intermediate_distance: int = args.surface_intermediate_distance or surface_final_distance
     initial_value: str
@@ -73,7 +88,7 @@ def main() -> None:
     interval = args.interval
 
     lookup_table_key = LookupTableKey(
-        error_probability=error_probability,
+        noise_conf=noise_conf,
         surface_intermediate_distance=surface_intermediate_distance,
         surface_final_distance=surface_final_distance,
         initial_value=initial_value,
